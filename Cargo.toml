@@ -67,6 +67,7 @@ bevy = { version = "0.15", default-features = false, features = [
     "png",
     "smaa_luts",
     "sysinfo_plugin",
+    "serialize",
     "tonemapping_luts",
     "webgl2",
     "x11",
@@ -74,6 +75,7 @@ bevy = { version = "0.15", default-features = false, features = [
 bevy_kira_audio = { version = "0.21" }
 bevy_asset_loader = { version = "0.22" }
 bevy_ecs_tilemap = { version = "0.15" }
+iyes_progress = { version = "0.13.1" }
 rand = { version = "0.8.3" }
 webbrowser = { version = "1", features = ["hardened"] }
 

@@ -660,6 +660,7 @@ dependencies = [
  "bevy_reflect 0.15.0",
  "bevy_tasks 0.15.0",
  "bevy_utils 0.15.0",
+ "serde",
  "uuid",
 ]
 
@@ -1053,6 +1054,7 @@ dependencies = [
  "bevy_reflect 0.15.0",
  "bevy_utils 0.15.0",
  "derive_more",
+ "serde",
  "smol_str",
 ]
 
@@ -1589,6 +1591,7 @@ dependencies = [
  "nonmax",
  "radsort",
  "rectangle-pack",
+ "serde",
 ]
 
 [[package]]
@@ -1696,6 +1699,7 @@ dependencies = [
  "bevy_reflect 0.15.0",
  "bevy_utils 0.15.0",
  "crossbeam-channel",
+ "serde",
 ]
 
 [[package]]
@@ -1724,6 +1728,7 @@ dependencies = [
  "bevy_math 0.15.0",
  "bevy_reflect 0.15.0",
  "derive_more",
+ "serde",
 ]
 
 [[package]]
@@ -1755,6 +1760,7 @@ dependencies = [
  "bytemuck",
  "derive_more",
  "nonmax",
+ "serde",
  "smallvec",
  "taffy",
 ]
@@ -1842,6 +1848,7 @@ dependencies = [
  "bevy_reflect 0.15.0",
  "bevy_utils 0.15.0",
  "raw-window-handle",
+ "serde",
  "smol_str",
 ]
 
@@ -1900,6 +1907,7 @@ dependencies = [
  "cfg-if",
  "crossbeam-channel",
  "raw-window-handle",
+ "serde",
  "wasm-bindgen",
  "web-sys",
  "wgpu-types 23.0.0",
@@ -4632,6 +4640,9 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "smol_str"
