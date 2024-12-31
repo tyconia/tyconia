@@ -1,40 +1,37 @@
-use crate::loading::TextureAssets;
+use crate::loading::{FontAssets, TextureAssets, UiAssets};
 use crate::GameState;
 use bevy::prelude::*;
+use bevy::text::FontSmoothing;
 
 pub struct MenuPlugin;
 
-/// This plugin is responsible for the game menu (containing only one button...)
-/// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Menu), setup_menu)
-            .add_systems(Update, click_play_button.run_if(in_state(GameState::Menu)))
-            .add_systems(OnExit(GameState::Menu), cleanup_menu);
+        app.enable_state_scoped_entities::<GameState>()
+            .add_systems(OnEnter(GameState::Menu), setup_menu)
+            .add_systems(Update, click_play_button.run_if(in_state(GameState::Menu)));
     }
 }
 
+/// TODO: disabled button skin
 #[derive(Component)]
-struct ButtonColors {
-    normal: Color,
-    hovered: Color,
+pub struct ButtonSkins {
+    pub normal: Handle<Image>,
+    pub active: Handle<Image>,
 }
 
-impl Default for ButtonColors {
-    fn default() -> Self {
-        ButtonColors {
-            normal: Color::linear_rgb(0.15, 0.15, 0.15),
-            hovered: Color::linear_rgb(0.25, 0.25, 0.25),
-        }
-    }
-}
+pub enum Settings {}
 
 #[derive(Component)]
 struct Menu;
 
-fn setup_menu(mut commands: Commands, textures: Res<TextureAssets>) {
-    info!("menu");
-    commands.spawn((Camera2d, Msaa::Off));
+fn styled_button<T: ChildBuild>(
+    commands: &mut T,
+    fonts: &Res<FontAssets>,
+    ui: &Res<UiAssets>,
+    name: &'static str,
+    game_state: GameState,
+) {
     commands
         .spawn((
             Node {
@@ -48,116 +45,140 @@ fn setup_menu(mut commands: Commands, textures: Res<TextureAssets>) {
             Menu,
         ))
         .with_children(|children| {
-            let button_colors = ButtonColors::default();
+            let button_skins = ButtonSkins {
+                normal: ui.button.clone(),
+                active: ui.button_active.clone(),
+            };
+
             children
                 .spawn((
                     Button,
                     Node {
-                        width: Val::Px(140.0),
-                        height: Val::Px(50.0),
+                        width: Val::Px(31. * 8.),
+                        height: Val::Px(7. * 8.),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         ..Default::default()
                     },
-                    BackgroundColor(button_colors.normal),
-                    button_colors,
-                    ChangeState(GameState::Playing),
+                    ImageNode {
+                        image: ui.button.clone(),
+                        image_mode: bevy::ui::widget::NodeImageMode::Tiled {
+                            tile_x: false,
+                            tile_y: false,
+                            stretch_value: 100.,
+                        },
+                        ..Default::default()
+                    },
+                    button_skins,
+                    ChangeState(game_state),
                 ))
                 .with_child((
-                    Text::new("Play"),
+                    Text::new(name),
                     TextFont {
-                        font_size: 40.0,
-                        ..default()
+                        font: fonts.jersey.clone(),
+                        font_size: 36.0,
+                        font_smoothing: FontSmoothing::None,
                     },
-                    TextColor(Color::linear_rgb(0.9, 0.9, 0.9)),
+                    TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
                 ));
         });
+}
+
+fn setup_menu(
+    mut commands: Commands,
+    textures: Res<TextureAssets>,
+    fonts: Res<FontAssets>,
+    ui: Res<UiAssets>,
+) {
+    // Root Menu Entity is a tiled image
     commands
         .spawn((
+            StateScoped(GameState::Menu),
             Node {
-                flex_direction: FlexDirection::Row,
+                flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
-                justify_content: JustifyContent::SpaceAround,
+                justify_content: JustifyContent::Center,
                 bottom: Val::Px(5.),
+                height: Val::Percent(100.),
                 width: Val::Percent(100.),
-                position_type: PositionType::Absolute,
                 ..default()
+            },
+            BackgroundColor(Color::WHITE),
+            ImageNode {
+                image: textures.products.clone(),
+                image_mode: bevy::ui::widget::NodeImageMode::Tiled {
+                    tile_x: true,
+                    tile_y: true,
+                    stretch_value: 1.,
+                },
+                ..Default::default()
             },
             Menu,
         ))
         .with_children(|children| {
+            // Camera
+            children.spawn((Camera2d, Msaa::Off, UiAntiAlias::Off));
+
+            // Title text
+            children.spawn((ImageNode {
+                image: ui.title.clone(),
+                ..Default::default()
+            },));
+
+            // Main menu buttons
             children
                 .spawn((
-                    Button,
                     Node {
-                        width: Val::Px(170.0),
-                        height: Val::Px(50.0),
-                        justify_content: JustifyContent::SpaceAround,
+                        flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
-                        padding: UiRect::all(Val::Px(5.)),
+                        justify_content: JustifyContent::Center,
+                        height: Val::Auto,
+                        width: Val::Auto,
+                        row_gap: Val::Px(8.),
+                        ..default()
+                    },
+                    //BackgroundColor(Color::WHITE),
+                ))
+                .with_children(|children| {
+                    styled_button(children, &fonts, &ui, "Continue", GameState::Playing);
+                    styled_button(children, &fonts, &ui, "New Game", GameState::Playing);
+                    styled_button(children, &fonts, &ui, "Load Game", GameState::Playing);
+                    styled_button(children, &fonts, &ui, "Sandbox", GameState::Playing);
+                    styled_button(children, &fonts, &ui, "Settings", GameState::Playing);
+                    styled_button(children, &fonts, &ui, "Quit", GameState::Quit);
+                });
+
+            let button_skins = ButtonSkins {
+                normal: ui.kofi_donation_link.clone(),
+                active: ui.kofi_donation_link_dark.clone(),
+            };
+
+            // Donation link
+            children
+                .spawn((
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        position_type: PositionType::Absolute,
+                        right: Val::Px(32.),
+                        bottom: Val::Px(48.),
+                        height: Val::Px(90.),
+                        width: Val::Px(180.),
+                        ..default()
+                    },
+                    BackgroundColor(Color::WHITE),
+                    ImageNode {
+                        image: ui.kofi_donation_link.clone(),
+                        image_mode: bevy::ui::widget::NodeImageMode::Stretch,
                         ..Default::default()
                     },
-                    BackgroundColor(Color::NONE),
-                    ButtonColors {
-                        normal: Color::NONE,
-                        ..default()
-                    },
-                    OpenLink("https://bevyengine.org"),
-                ))
-                .with_children(|parent| {
-                    parent.spawn((
-                        Text::new("Made with Bevy"),
-                        TextFont {
-                            font_size: 15.0,
-                            ..default()
-                        },
-                        TextColor(Color::linear_rgb(0.9, 0.9, 0.9)),
-                    ));
-                    parent.spawn((
-                        ImageNode {
-                            image: textures.bevy.clone(),
-                            ..default()
-                        },
-                        Node {
-                            width: Val::Px(32.),
-                            ..default()
-                        },
-                    ));
-                });
-            children
-                .spawn((
+                    OpenLink("https://ko-fi.com/yorqat"),
                     Button,
-                    Node {
-                        width: Val::Px(170.0),
-                        height: Val::Px(50.0),
-                        justify_content: JustifyContent::SpaceAround,
-                        align_items: AlignItems::Center,
-                        padding: UiRect::all(Val::Px(5.)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::NONE),
-                    ButtonColors {
-                        normal: Color::NONE,
-                        hovered: Color::linear_rgb(0.25, 0.25, 0.25),
-                    },
-                    OpenLink("https://github.com/NiklasEi/bevy_game_template"),
+                    button_skins,
                 ))
-                .with_children(|parent| {
-                    parent.spawn((
-                        Text::new("Open source"),
-                        TextFont {
-                            font_size: 15.0,
-                            ..default()
-                        },
-                        TextColor(Color::linear_rgb(0.9, 0.9, 0.9)),
-                    ));
-                    parent.spawn((
-                        ImageNode::new(textures.github.clone()),
-                        Node {
-                            width: Val::Px(32.),
-                            ..default()
-                        },
-                    ));
+                .with_children(|children| {
+                    children.spawn_empty();
                 });
         });
 }
@@ -168,42 +189,70 @@ struct ChangeState(GameState);
 #[derive(Component)]
 struct OpenLink(&'static str);
 
+/// Tracks an interaction for mouse up after mouse down
+#[derive(Component)]
+struct Depress;
+
 fn click_play_button(
+    mut cmd: Commands,
     mut next_state: ResMut<NextState<GameState>>,
     mut interaction_query: Query<
         (
+            Entity,
+            &Children,
             &Interaction,
-            &mut BackgroundColor,
-            &ButtonColors,
+            &mut ImageNode,
+            &ButtonSkins,
             Option<&ChangeState>,
             Option<&OpenLink>,
+            Option<&mut Depress>,
         ),
         (Changed<Interaction>, With<Button>),
     >,
 ) {
-    for (interaction, mut color, button_colors, change_state, open_link) in &mut interaction_query {
+    for (
+        entity,
+        children,
+        interaction,
+        mut image,
+        button_skins,
+        change_state,
+        open_link,
+        depress,
+    ) in &mut interaction_query
+    {
         match *interaction {
             Interaction::Pressed => {
-                if let Some(state) = change_state {
-                    next_state.set(state.0.clone());
-                } else if let Some(link) = open_link {
-                    if let Err(error) = webbrowser::open(link.0) {
-                        warn!("Failed to open link {error:?}");
+                image.image = button_skins.active.clone();
+
+                cmd.entity(children.first().unwrap().clone())
+                    .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
+                cmd.entity(entity).insert(Depress);
+            }
+            Interaction::Hovered => {
+                // Only commit during mouse up
+                if let Some(depress) = depress {
+                    cmd.entity(entity).remove::<Depress>();
+
+                    if let Some(state) = change_state {
+                        next_state.set(state.0.clone());
+                    } else if let Some(link) = open_link {
+                        if let Err(error) = webbrowser::open(link.0) {
+                            warn!("Failed to open link {error:?}");
+                        }
                     }
                 }
             }
-            Interaction::Hovered => {
-                *color = button_colors.hovered.into();
-            }
             Interaction::None => {
-                *color = button_colors.normal.into();
+                if let Some(depress) = depress {
+                    cmd.entity(entity).remove::<Depress>();
+                }
+
+                cmd.entity(children.first().unwrap().clone())
+                    .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
+
+                image.image = button_skins.normal.clone();
             }
         }
-    }
-}
-
-fn cleanup_menu(mut commands: Commands, menu: Query<Entity, With<Menu>>) {
-    for entity in menu.iter() {
-        commands.entity(entity).despawn_recursive();
     }
 }

@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-mod actions;
+pub mod actions;
 mod audio;
 mod levels;
 mod loading;
@@ -30,20 +30,37 @@ enum GameState {
     Playing,
     // Here the menu is drawn and waiting for player interaction
     Menu,
+    // Signal to quit window
+    Quit,
+}
+
+fn quit(mut event_writer: EventWriter<AppExit>) {
+    event_writer.send(AppExit::Success);
+}
+
+#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash)]
+#[source(GameState = GameState::Playing) ]
+enum InGameState {
+    #[default]
+    Normal,
+    Paused,
 }
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<GameState>().add_plugins((
-            LoadingPlugin,
-            MenuPlugin,
-            ActionsPlugin,
-            InternalAudioPlugin,
-            PlayerPlugin,
-            levels::ChunkPlugin,
-        ));
+        app.init_state::<GameState>()
+            .init_state::<InGameState>()
+            .add_systems(OnEnter(GameState::Quit), (quit,))
+            .add_plugins((
+                LoadingPlugin,
+                MenuPlugin,
+                ActionsPlugin,
+                InternalAudioPlugin,
+                PlayerPlugin,
+                levels::ChunkPlugin,
+            ));
 
         #[cfg(debug_assertions)]
         {
