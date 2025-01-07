@@ -1,10 +1,16 @@
 [package]
-name = "bevy_game"
+name = "tyconia"
 version = "0.1.0"
 publish = false
 authors = ["Niklas Eicker <git@nikl.me>"] # ToDo: you are the author ;)
 edition = "2021"
 exclude = ["dist", "build", "assets", "credits"]
+
+[package.metadata.project]
+qualifier = "com"
+organization = "allurestudios"
+application = "tyconic"
+support_link = "https://ko-fi.com/yorqat"
 
 [workspace]
 members = ["mobile"]
@@ -79,6 +85,8 @@ iyes_progress = { version = "0.13.1" }
 rand = { version = "0.8.3" }
 webbrowser = { version = "1", features = ["hardened"] }
 
+directories = { version = "5.0.1" }
+
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.30", default-features = false }
 image = { version = "0.25", default-features = false }
@@ -87,3 +95,4 @@ log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"
 
 [build-dependencies]
 embed-resource = "1"
+cargo_metadata = "0.14"
