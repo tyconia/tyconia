@@ -39,5 +39,8 @@ fn assign_cargo_meta_data() {
         if let Some(application) = project.get("application").and_then(|v| v.as_str()) {
             println!("cargo:rustc-env=PROJECT_APPLICATION={}", application);
         }
+        if let Some(support_link) = project.get("support_link").and_then(|v| v.as_str()) {
+            println!("cargo:rustc-env=PROJECT_SUPPORT_LINK={}", support_link);
+        }
     }
 }
