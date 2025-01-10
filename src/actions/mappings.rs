@@ -2,7 +2,7 @@ use super::*;
 use crate::GameState;
 use bevy::input::gamepad::GamepadInput;
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 
 /// Enables systems to dispatch actions based on [`InputMappings`] [`Resource`]
 pub(crate) struct InputMappingsPlugin;

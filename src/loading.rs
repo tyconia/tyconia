@@ -1,4 +1,4 @@
-use crate::{actions::InputMappings, GameState};
+use crate::GameState;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
@@ -13,7 +13,6 @@ impl Plugin for LoadingPlugin {
         app.add_loading_state(
             LoadingState::new(GameState::Loading)
                 .continue_to_state(GameState::Menu)
-                //.load_collection::<ConfigAssets>()
                 .load_collection::<AudioAssets>()
                 .load_collection::<FontAssets>()
                 .load_collection::<UiAssets>()
@@ -69,8 +68,3 @@ pub struct UiAssets {
     pub kofi_donation_link_dark: Handle<Image>,
 }
 
-//#[derive(AssetCollection, Resource)]
-//pub struct ConfigAssets {
-//    #[asset(path = "config/input_mappings.ron")]
-//    pub input_mappings: Handle<InputMappings>,
-//}

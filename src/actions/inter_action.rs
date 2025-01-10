@@ -17,7 +17,7 @@ pub enum InterAction {
 }
 
 pub(crate) fn dispatch_inter_actions(
-    mut movement_actions_event: EventWriter<InterAction>,
+    movement_actions_event: EventWriter<InterAction>,
     input_mappings: Res<InputMappings>,
 ) {
 }

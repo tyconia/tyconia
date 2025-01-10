@@ -93,7 +93,7 @@ struct HighlightedTile;
 fn highlight_tile(
     mut cmd: Commands,
     cursor_world_position: Res<CursorWorldPosition>,
-    mut last_cursor_pos: Local<Vec2>,
+    last_cursor_pos: Local<Vec2>,
     tilemap_q: Query<(
         &TilemapSize,
         &TilemapGridSize,

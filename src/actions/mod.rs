@@ -17,7 +17,6 @@ pub use mappings::*;
 pub use movement::*;
 pub use ui::*;
 
-use crate::player::Player;
 use crate::GameState;
 
 /// This plugin listens for [`DesktopControl`] input and converts into Actions which
@@ -39,9 +38,7 @@ impl Plugin for ActionsPlugin {
 }
 
 use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
-use bevy::reflect::{Reflect, ReflectDeserialize};
 use serde::de::DeserializeSeed;
-use serde::Deserializer;
 use std::fs::File;
 use std::io::{Read, Write};
 
@@ -87,7 +84,7 @@ fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings:
     }
 }
 
-fn print_input_map(mut type_registry: ResMut<AppTypeRegistry>, map: Res<mappings::InputMappings>) {
+fn print_input_map(type_registry: ResMut<AppTypeRegistry>, map: Res<mappings::InputMappings>) {
     let type_registry = type_registry.read();
 
     let mut map = mappings::InputMappings::default();
@@ -185,7 +182,7 @@ fn print_input_map(mut type_registry: ResMut<AppTypeRegistry>, map: Res<mappings
     );
 
     let serializer = ReflectSerializer::new(&map, &type_registry);
-    let mut pretty_config = ron::ser::PrettyConfig::default()
+    let pretty_config = ron::ser::PrettyConfig::default()
         .compact_arrays(true)
         .depth_limit(3);
 

@@ -33,7 +33,7 @@ impl UiAction {
 }
 
 pub(crate) fn dispatch_ui_actions(
-    mut ui_actions_events: EventWriter<UiAction>,
+    ui_actions_events: EventWriter<UiAction>,
     input_mappings: Res<InputMappings>,
 
     mut next_state: ResMut<NextState<GameState>>,
