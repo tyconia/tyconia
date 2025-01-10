@@ -1,133 +1,294 @@
+//! This module seperate actions into their own event channels
+
+//use crate::loading::ConfigAssets;
 use bevy::input::mouse::MouseWheel;
-use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
+use bevy::utils::HashSet;
 
-mod mappings;
-use mappings::*;
+pub(crate) mod cursors;
+pub(crate) mod inter_action;
+pub(crate) mod mappings;
+pub(crate) mod movement;
+pub(crate) mod ui;
 
-use crate::actions::game_control::{get_movement, GameControl};
+pub use cursors::*;
+pub use inter_action::*;
+pub use mappings::*;
+pub use movement::*;
+pub use ui::*;
+
 use crate::player::Player;
-use crate::InGameState;
+use crate::GameState;
 
-mod game_control;
-
-pub const FOLLOW_EPSILON: f32 = 5.;
-
+/// This plugin listens for [`DesktopControl`] input and converts into Actions which
+/// can then be used as a resource in other systems to act on the player input
 pub struct ActionsPlugin;
 
-// This plugin listens for keyboard input and converts the input into Actions
-// Actions can then be used as a resource in other systems to act on the player input.
 impl Plugin for ActionsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CursorWorldPosition>()
-            .add_event::<PlayerMovementAction>()
-            .add_event::<UiAction>()
-            .add_event::<PlayerAction>()
+        app.add_plugins((mappings::InputMappingsPlugin, cursors::CursorsPlugin))
+            .add_event::<movement::MovementAction>()
+            .add_event::<ui::UiAction>()
+            .add_event::<inter_action::InterAction>()
+            .add_systems(Startup, (load_input_map,).chain())
             .add_systems(
                 Update,
-                (
-                    set_ui_actions,
-                    set_movement_actions,
-                    set_cursor.run_if(on_event::<CursorMoved>),
-                )
-                    .run_if(in_state(InGameState::Normal)),
+                (set_ui_actions,).run_if(in_state(GameState::Playing)),
             );
     }
 }
 
-pub enum Action {
-    PlayerMovementAction(PlayerMovementAction),
-    UiAction(UiAction),
-    PlayerAction(PlayerAction),
+use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
+use bevy::reflect::{Reflect, ReflectDeserialize};
+use serde::de::DeserializeSeed;
+use serde::Deserializer;
+use std::fs::File;
+use std::io::{Read, Write};
+
+// Loads input map
+fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings::InputMappings>) {
+    // load platform specific app directories
+    let project_dir = directories::ProjectDirs::from(
+        env!("PROJECT_QUALIFIER"),
+        env!("PROJECT_ORGANIZATION"),
+        env!("PROJECT_APPLICATION"),
+    )
+    .expect("no valid home directory path could be retrieved from the operating system");
+
+    let config_dir = project_dir.config_dir();
+
+    let type_registry = type_registry.read();
+    let file_name = std::path::Path::new("input_mappings.ron");
+    let file_path = config_dir.join(file_name);
+
+    match File::open(&file_path) {
+        Ok(mut file) => {
+            let mut ron = String::new();
+            file.read_to_string(&mut ron).unwrap();
+
+            let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
+            let reflect_deserializer = ReflectDeserializer::new(&type_registry);
+
+            let partial_reflect_value =
+                reflect_deserializer.deserialize(&mut deserializer).unwrap();
+
+            *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
+
+            info!("input map loaded successfully {:#?}", *map);
+        }
+
+        Err(e) => {
+            error!(
+                "Failed to open file {}, at {}, Loaded default configuration instead",
+                e,
+                file_path.to_string_lossy()
+            );
+        }
+    }
 }
 
-#[derive(Default, Resource)]
-pub struct CursorWorldPosition(pub Vec2);
+fn print_input_map(mut type_registry: ResMut<AppTypeRegistry>, map: Res<mappings::InputMappings>) {
+    let type_registry = type_registry.read();
 
-#[derive(Default, Event)]
-pub struct PlayerMovementAction(pub Vec2);
+    let mut map = mappings::InputMappings::default();
 
-#[derive(Event)]
-/// Actions for changing the HUD
-pub enum UiAction {
-    /// Change map zoom
-    Zoom(f32),
-    /// Hotbar select
-    HotbarSlot(usize),
-    /// Summon pause menu
-    Menu,
-}
+    map.ui_actions.insert(
+        ui::UiAction::Menu,
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Escape)],
+            secondary: vec![DesktopControl::Key(KeyCode::KeyP)],
+            ..default()
+        },
+    );
 
-#[derive(Event)]
-/// Player  interactions with entities
-pub enum PlayerAction {
-    /// Grab copy of entity from inventory
-    Pipette,
-    /// Placing down entity
-    Construct,
-    /// Destroy entity
-    Deconstruct,
-    /// Provide item for entity
-    Distribute,
-    /// Copy entity attributes
-    CopyConfiguration,
-}
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(0),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit1)],
+            ..default()
+        },
+    );
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(1),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit2)],
+            ..default()
+        },
+    );
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(2),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit3)],
+            ..default()
+        },
+    );
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(3),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit4)],
+            ..default()
+        },
+    );
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(4),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit5)],
+            ..default()
+        },
+    );
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(5),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit6)],
+            ..default()
+        },
+    );
+    map.ui_actions.insert(
+        ui::UiAction::HotbarSlot(6),
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::Digit7)],
+            ..default()
+        },
+    );
 
-pub fn set_cursor(
-    camera_q: Query<(&GlobalTransform, &Camera)>,
-    mut cursor_moved_events: EventReader<CursorMoved>,
-    mut cursor_world_position: ResMut<CursorWorldPosition>,
-) {
-    for cursor_moved in cursor_moved_events.read() {
-        // To get the mouse's world position, we have to transform its window position by
-        // any transforms on the camera. This is done by projecting the cursor position into
-        // camera space (world space).
-        for (cam_t, cam) in camera_q.iter() {
-            if let Ok(pos) = cam.viewport_to_world_2d(cam_t, cursor_moved.position) {
-                *cursor_world_position = CursorWorldPosition(pos);
+    map.movement_actions.insert(
+        movement::MovementAction::North,
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::KeyW)],
+            secondary: vec![DesktopControl::Key(KeyCode::ArrowUp)],
+            ..default()
+        },
+    );
+    map.movement_actions.insert(
+        movement::MovementAction::South,
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::KeyS)],
+            secondary: vec![DesktopControl::Key(KeyCode::ArrowDown)],
+            ..default()
+        },
+    );
+    map.movement_actions.insert(
+        movement::MovementAction::East,
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::KeyD)],
+            secondary: vec![DesktopControl::Key(KeyCode::ArrowRight)],
+            ..default()
+        },
+    );
+    map.movement_actions.insert(
+        movement::MovementAction::West,
+        mappings::InputMappingEntry {
+            primary: vec![DesktopControl::Key(KeyCode::KeyA)],
+            secondary: vec![DesktopControl::Key(KeyCode::ArrowLeft)],
+            ..default()
+        },
+    );
+
+    let serializer = ReflectSerializer::new(&map, &type_registry);
+    let mut pretty_config = ron::ser::PrettyConfig::default()
+        .compact_arrays(true)
+        .depth_limit(3);
+
+    let ron = ron::ser::to_string_pretty(&serializer, pretty_config).unwrap();
+
+    let qualifier = env!("PROJECT_QUALIFIER");
+    let organization = env!("PROJECT_ORGANIZATION");
+    let application = env!("PROJECT_APPLICATION");
+    let project_dir = directories::ProjectDirs::from(qualifier, organization, application).unwrap();
+    let config_dir = project_dir.config_dir();
+
+    let file_name = std::path::Path::new("input_mappings.ron");
+    let file_path = config_dir.join(file_name);
+
+    //input_mappings_config
+    match File::create(&file_path) {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(ron.as_bytes()) {
+                error!(
+                    "Failed to write data to file: {}, path is {}",
+                    e,
+                    file_path.to_string_lossy()
+                );
+            } else {
+                info!("Data successfully written to {}", file_path.display());
             }
         }
+        Err(e) => error!("Failed to create file: {}", e),
+    }
+
+    match File::open(&file_path) {
+        Ok(mut file) => {
+            let mut ron = String::new();
+            file.read_to_string(&mut ron).unwrap();
+
+            let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
+            let reflect_deserializer = ReflectDeserializer::new(&type_registry);
+
+            let reflect_value: Box<dyn PartialReflect> =
+                reflect_deserializer.deserialize(&mut deserializer).unwrap();
+
+            info!("Data is {:?}", reflect_value);
+        }
+        Err(e) => error!(
+            "Failed to open file {}, at {}",
+            e,
+            file_path.to_string_lossy()
+        ),
     }
 }
 
 /// Mouse wheel movement to Zoom actions
 pub fn set_ui_actions(
-    mut ui_actions: EventWriter<UiAction>,
+    mut ui_actions: EventWriter<ui::UiAction>,
     mut mouse_wheel: EventReader<MouseWheel>,
 ) {
-    let mw_movement: f32 = mouse_wheel.read().map(|mw| mw.y).sum();
-    if mw_movement > 0.1 || mw_movement < -0.1 {
-        ui_actions.send(UiAction::Zoom(mw_movement));
+    let mw_movement: f32 = mouse_wheel.read().map(|m| m.y).sum();
+    if mw_movement.round() as isize != 0 {
+        ui_actions.send(ui::UiAction::Zoom(mw_movement.round() as isize));
     }
 }
 
 /// Keyboard movement to player movement actions
+/// TODO: Support touch input
 pub fn set_movement_actions(
-    mut player_movement_action: EventWriter<PlayerMovementAction>,
+    mut player_movement_action: EventWriter<movement::MovementAction>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    touch_input: Res<Touches>,
-    player: Query<&Transform, With<Player>>,
-    camera: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    mut held: Local<HashSet<KeyCode>>,
 ) {
-    let mut player_movement = Vec2::new(
-        get_movement(GameControl::Right, &keyboard_input)
-            - get_movement(GameControl::Left, &keyboard_input),
-        get_movement(GameControl::Up, &keyboard_input)
-            - get_movement(GameControl::Down, &keyboard_input),
-    );
+    const KEYS: [KeyCode; 8] = [
+        KeyCode::KeyW,
+        KeyCode::KeyS,
+        KeyCode::KeyA,
+        KeyCode::KeyD,
+        KeyCode::ArrowUp,
+        KeyCode::ArrowDown,
+        KeyCode::ArrowLeft,
+        KeyCode::ArrowRight,
+    ];
 
-    if let Some(touch_position) = touch_input.first_pressed_position() {
-        let (camera, camera_transform) = camera.single();
-        if let Ok(touch_position) = camera.viewport_to_world_2d(camera_transform, touch_position) {
-            let diff = touch_position - player.single().translation.xy();
-            if diff.length() > FOLLOW_EPSILON {
-                player_movement = diff.normalize();
-                player_movement_action.send(PlayerMovementAction(diff.normalize()));
-            }
+    // Add new keys to the 'held' set
+    for key in KEYS.iter() {
+        if keyboard_input.just_pressed(*key) {
+            held.insert(*key);
         }
     }
 
-    if player_movement != Vec2::ZERO {
-        player_movement_action.send(PlayerMovementAction(player_movement.normalize()));
+    (match &KEYS
+        .iter()
+        .map(|k| held.contains(&*k))
+        .collect::<Vec<bool>>()[0..4]
+    {
+        &[true, false, false, false] => Some(movement::MovementAction::North),
+        _ => None,
+    })
+    .map(|a| {
+        player_movement_action.send(a);
+    });
+
+    // Remove keys that were just released
+    for key in KEYS.iter() {
+        if keyboard_input.just_released(*key) {
+            held.remove(&*key);
+        }
     }
 }

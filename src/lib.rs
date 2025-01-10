@@ -1,4 +1,5 @@
 #![allow(clippy::type_complexity)]
+#![feature(trait_upcasting)]
 
 pub mod actions;
 mod audio;
@@ -41,8 +42,8 @@ fn quit(mut event_writer: EventWriter<AppExit>) {
 #[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash)]
 #[source(GameState = GameState::Playing) ]
 enum InGameState {
-    #[default]
     Normal,
+    #[default]
     Paused,
 }
 

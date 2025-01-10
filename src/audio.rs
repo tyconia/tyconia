@@ -1,4 +1,4 @@
-use crate::actions::{set_movement_actions, PlayerMovementAction};
+use crate::actions::{movement::MovementAction, set_movement_actions};
 use crate::loading::AudioAssets;
 use crate::GameState;
 use bevy::prelude::*;
@@ -34,7 +34,7 @@ fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>, audio: Re
 }
 
 fn control_flying_sound(
-    mut player_movement_action: EventReader<PlayerMovementAction>,
+    mut player_movement_action: EventReader<MovementAction>,
     audio: Res<FlyingAudio>,
     mut audio_instances: ResMut<Assets<AudioInstance>>,
 ) {

@@ -140,9 +140,9 @@ fn setup_menu(
                     //BackgroundColor(Color::WHITE),
                 ))
                 .with_children(|children| {
-                    styled_button(children, &fonts, &ui, "Continue", GameState::Playing);
-                    styled_button(children, &fonts, &ui, "New Game", GameState::Playing);
-                    styled_button(children, &fonts, &ui, "Load Game", GameState::Playing);
+                    //styled_button(children, &fonts, &ui, "Continue", GameState::Playing);
+                    //styled_button(children, &fonts, &ui, "New Game", GameState::Playing);
+                    //styled_button(children, &fonts, &ui, "Load Game", GameState::Playing);
                     styled_button(children, &fonts, &ui, "Sandbox", GameState::Playing);
                     styled_button(children, &fonts, &ui, "Settings", GameState::Playing);
                     styled_button(children, &fonts, &ui, "Quit", GameState::Quit);
@@ -173,7 +173,7 @@ fn setup_menu(
                         image_mode: bevy::ui::widget::NodeImageMode::Stretch,
                         ..Default::default()
                     },
-                    OpenLink("https://ko-fi.com/yorqat"),
+                    OpenLink(env!("PROJECT_SUPPORT_LINK")),
                     Button,
                     button_skins,
                 ))
@@ -185,6 +185,13 @@ fn setup_menu(
 
 #[derive(Component)]
 struct ChangeState(GameState);
+
+#[derive(Component)]
+enum TransitionState {
+    MainMenu,
+    InGame,
+    InGamePaused,
+}
 
 #[derive(Component)]
 struct OpenLink(&'static str);
@@ -243,6 +250,7 @@ fn click_play_button(
                     }
                 }
             }
+
             Interaction::None => {
                 if let Some(depress) = depress {
                     cmd.entity(entity).remove::<Depress>();

@@ -1,4 +1,4 @@
-use crate::actions::{CursorWorldPosition, PlayerMovementAction, UiAction};
+use crate::actions::{cursors::CursorWorldPosition, movement::MovementAction, ui::UiAction};
 use crate::levels::chunks::OriginalColor;
 use crate::loading::TextureAssets;
 use crate::GameState;
@@ -15,8 +15,8 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (
-                    move_player.run_if(on_event::<PlayerMovementAction>),
-                    zoom_camera.run_if(on_event::<UiAction>),
+                    move_player.run_if(on_event::<MovementAction>),
+                    zoom_camera,
                     highlight_tile.run_if(resource_changed::<CursorWorldPosition>),
                 )
                     .run_if(in_state(GameState::Playing)),
@@ -29,6 +29,7 @@ fn spawn_player(mut commands: Commands, textures: Res<TextureAssets>) {
         .spawn((
             Sprite::from_image(textures.infinite_io.clone()),
             Transform::from_translation(Vec3::new(0., 0., 999.)),
+            StateScoped(GameState::Playing),
             Player,
         ))
         .with_children(|children| {
@@ -36,49 +37,50 @@ fn spawn_player(mut commands: Commands, textures: Res<TextureAssets>) {
         });
 }
 
-/// Zooms camera from Actions
+/// Zooms camera from Actions with linear interpolation
 fn zoom_camera(
     mut ui_action: EventReader<UiAction>,
     mut camera: Query<&mut OrthographicProjection, With<Camera>>,
     mut new_scale: Local<f32>,
+    time: Res<Time>,
 ) {
-    let factor: f32 = ui_action
+    let factor: isize = ui_action
         .read()
-        .filter_map(|ui_action| {
-            if let UiAction::Zoom(factor) = ui_action {
-                Some(factor)
-            } else {
-                None
-            }
-        })
+        .filter_map(|ui_action| ui_action.zoom())
         .sum();
 
     let mut camera = camera.single_mut();
-    *new_scale = (camera.scale - factor / 12.).clamp(0.3, 1.8);
-    camera.scale = camera.scale.lerp(*new_scale, 0.5);
+
+    fn approx_inequal(a: f32, b: f32, tolerance: f32) -> bool {
+        !((a - b).abs() <= tolerance)
+    }
+
+    if approx_inequal(camera.scale, *new_scale, 0.01) || factor != 0 {
+        *new_scale = (*new_scale - factor as f32 * time.delta_secs()).clamp(0.3, 1.8);
+    }
+
+    camera.scale = camera.scale.lerp(*new_scale, 0.11);
 }
 
+/// TODO: Z indexing for obstacles
 fn move_player(
     time: Res<Time>,
-    mut player_movement_action: EventReader<PlayerMovementAction>,
+    mut player_movement_action: EventReader<MovementAction>,
     mut player_query: Query<&mut Transform, With<Player>>,
 ) {
-    let player_movement = player_movement_action.read().last();
-    if player_movement.is_none() {
-        return;
-    }
-    let player_movement = player_movement.unwrap().0;
-    let speed = 1900.;
-    let movement = Vec3::new(
-        player_movement.x * speed * time.delta_secs(),
-        player_movement.y * speed * time.delta_secs(),
-        0.,
-    );
+    const SPEED: f32 = 500.;
+    // Convert all movement into vectors and sum up
+    let movement: Vec2 = player_movement_action
+        .read()
+        .map(|action| Vec2::from(action))
+        .fold(Vec2::ZERO, |x, y| x + y);
+
     for mut player_transform in &mut player_query {
-        //player_transform.translation += movement;
-        player_transform.translation = player_transform
-            .translation
-            .lerp(player_transform.translation + movement, 0.2)
+        player_transform.translation = player_transform.translation.lerp(
+            player_transform.translation
+                + Vec3::new(movement.x, movement.y, 0.) * time.delta_secs() * SPEED,
+            0.2,
+        )
     }
 }
 

@@ -1,0 +1,22 @@
+{
+    "tyconia::actions::mappings::InputMappings": (
+        ui_actions: {
+            Menu: (primary: [Key(Escape)], secondary: [Key(KeyP)], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(0): (primary: [Key(Digit1)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(1): (primary: [Key(Digit2)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(3): (primary: [Key(Digit4)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(4): (primary: [Key(Digit5)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(2): (primary: [Key(Digit3)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(5): (primary: [Key(Digit6)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(6): (primary: [Key(Digit7)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+        },
+        movement_actions: {
+            North: (primary: [Key(KeyW)], secondary: [Key(ArrowUp)], primary_gamepad: [], secondary_gamepad: []),
+            South: (primary: [Key(KeyS)], secondary: [Key(ArrowDown)], primary_gamepad: [], secondary_gamepad: []),
+            East: (primary: [Key(KeyD)], secondary: [Key(ArrowRight)], primary_gamepad: [], secondary_gamepad: []),
+            West: (primary: [Key(KeyA)], secondary: [Key(ArrowLeft)], primary_gamepad: [], secondary_gamepad: []),
+        },
+        inter_actions: {},
+        custom_actions: {},
+    ),
+}
