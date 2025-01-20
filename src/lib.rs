@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 #![feature(trait_upcasting)]
+#![feature(impl_trait_in_bindings)]
 
 pub mod actions;
 mod audio;
@@ -7,6 +8,7 @@ mod levels;
 mod loading;
 mod menu;
 mod player;
+pub mod ui;
 
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
@@ -22,16 +24,16 @@ use bevy::prelude::*;
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
 // Or https://github.com/bevyengine/bevy/blob/main/examples/ecs/state.rs
-#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
-enum GameState {
-    // During the loading State the LoadingPlugin will load our assets
+#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash, Copy)]
+pub enum GameState {
+    /// Initial asset loading
     #[default]
     Loading,
-    // During this State the actual game logic is executed
+    /// Gameworld loaded and optionally simulated
     Playing,
-    // Here the menu is drawn and waiting for player interaction
+    /// Main menu drawn and waiting for interactions
     Menu,
-    // Signal to quit window
+    /// Signal to quit window
     Quit,
 }
 
@@ -52,7 +54,8 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<GameState>()
-            .init_state::<InGameState>()
+            .enable_state_scoped_entities::<GameState>()
+            .add_sub_state::<InGameState>()
             .add_systems(OnEnter(GameState::Quit), (quit,))
             .add_plugins((
                 LoadingPlugin,
@@ -61,6 +64,8 @@ impl Plugin for GamePlugin {
                 InternalAudioPlugin,
                 PlayerPlugin,
                 levels::ChunkPlugin,
+                levels::TransportPlugin,
+                ui::UiPlugin,
             ));
 
         #[cfg(debug_assertions)]

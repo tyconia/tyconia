@@ -88,7 +88,7 @@ pub struct OriginalColor(pub TileColor);
 
 fn render_floors(mut cmd: Commands, textures: Res<TextureAssets>) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
-    let floor_handle: Handle<Image> = textures.isometric_floors.clone();
+    let floor_handle: Handle<Image> = textures.isometric_kitchen_floors.clone();
 
     let map_size = TilemapSize {
         x: QUADRANT_SIDE_LENGTH * 2,
@@ -107,11 +107,11 @@ fn render_floors(mut cmd: Commands, textures: Res<TextureAssets>) {
                     const FLOOR_TILE_SIZE: u32 = 2;
                     let tile_x = x / FLOOR_TILE_SIZE;
                     let tile_y = y / FLOOR_TILE_SIZE;
-                    if (tile_x + tile_y) % 2 == 0 {
-                        TileColor(Color::BLACK)
-                    } else {
-                        TileColor::default()
-                    }
+                    //if (tile_x + tile_y) % 2 == 0 {
+                    //    TileColor(Color::BLACK)
+                    //} else {
+                    TileColor::default()
+                    //}
                 };
 
                 let tile_pos = TilePos { x, y };

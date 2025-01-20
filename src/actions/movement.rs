@@ -2,7 +2,7 @@ use crate::actions::*;
 use bevy::prelude::*;
 
 /// [`Resource`] for enabling movement vector adjusted for isometric movement during adjacent directions.
-/// True by default
+/// [`true`] by default
 #[derive(Resource)]
 pub struct IsometricMovement(pub bool);
 

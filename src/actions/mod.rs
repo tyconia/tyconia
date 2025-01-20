@@ -1,4 +1,4 @@
-//! This module seperate actions into their own event channels
+//! This module handle input to action lifecycles sending events to their respective channels
 
 //use crate::loading::ConfigAssets;
 use bevy::input::mouse::MouseWheel;

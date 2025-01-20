@@ -4,12 +4,20 @@ use crate::GameState;
 use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
+#[derive(Debug, Resource)]
+pub struct SFXAudioChannel;
+
+#[derive(Debug, Resource)]
+pub struct MusicAudioChannel;
+
 pub struct InternalAudioPlugin;
 
 // This plugin is responsible to control the game audio
 impl Plugin for InternalAudioPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(AudioPlugin)
+            .add_audio_channel::<SFXAudioChannel>()
+            .add_audio_channel::<MusicAudioChannel>()
             .add_systems(OnEnter(GameState::Playing), start_audio)
             .add_systems(
                 Update,

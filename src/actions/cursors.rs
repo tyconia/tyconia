@@ -1,3 +1,4 @@
+use super::MovementAction;
 use crate::GameState;
 use bevy::prelude::*;
 
@@ -8,7 +9,11 @@ impl Plugin for CursorsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CursorWorldPosition>().add_systems(
             Update,
-            (set_cursor.run_if(on_event::<CursorMoved>),).run_if(in_state(GameState::Playing)),
+            (set_cursor.run_if(
+                // runs when either mouse or player movement is detected
+                on_event::<CursorMoved>.or(on_event::<MovementAction>),
+            ),)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -18,16 +23,22 @@ impl Plugin for CursorsPlugin {
 pub struct CursorWorldPosition(pub Vec2);
 
 pub fn set_cursor(
-    camera_q: Query<(&GlobalTransform, &Camera)>,
+    camera: Query<(&GlobalTransform, &Camera)>,
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut cursor_world_position: ResMut<CursorWorldPosition>,
+    mut last_moved: Local<Vec2>,
 ) {
-    for cursor_moved in cursor_moved_events.read() {
-        // To get the mouse's world position, we have to transform its window position by
-        // any transforms on the camera. This is done by projecting the cursor position into
-        // camera space (world space).
-        for (cam_t, cam) in camera_q.iter() {
-            if let Ok(pos) = cam.viewport_to_world_2d(cam_t, cursor_moved.position) {
+    let cursor_moved_events = cursor_moved_events.read();
+    if cursor_moved_events.len() == 0 {
+        let (transform, cam) = camera.single();
+        if let Ok(pos) = cam.viewport_to_world_2d(transform, *last_moved) {
+            *cursor_world_position = CursorWorldPosition(pos);
+        }
+    } else {
+        for cursor_moved in cursor_moved_events {
+            let (transform, cam) = camera.single();
+            if let Ok(pos) = cam.viewport_to_world_2d(transform, cursor_moved.position) {
+                *last_moved = cursor_moved.position;
                 *cursor_world_position = CursorWorldPosition(pos);
             }
         }
