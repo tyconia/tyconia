@@ -48,7 +48,7 @@ pub fn ui_scaling(
     const MAX_UI_SCALE: f32 = 1.;
 
     let _ = ui_scaler.get_single().map(|slider| {
-        //ui_scale.0 = slider.value;
+        ui_scale.0 = slider.value.clamp(0.8, 1.4);
         info!("Scaling is {}", slider.value);
         //ui_scale.0 += 0.01;
     });

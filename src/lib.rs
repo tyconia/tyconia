@@ -4,6 +4,7 @@
 
 pub mod actions;
 mod audio;
+pub mod hud;
 mod levels;
 mod loading;
 mod menu;

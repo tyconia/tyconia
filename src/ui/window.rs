@@ -9,6 +9,10 @@ impl Plugin for WindowPlugin {
     fn build(&self, app: &mut App) {}
 }
 
+/// TODO: Add window titles
+#[derive(Debug, Component)]
+pub struct WindowTitle(pub String);
+
 pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
     cmd: &'a mut ChildBuilder,
     window_components: C,
@@ -35,12 +39,12 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             ..default()
         },
         ImageNode {
-            image: ui.button_alpha_active.clone(),
+            image: ui.window_content.clone(),
             image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
                 border: BorderRect::from([5., 5., 4., 4.]),
-                center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
-                sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
-                max_corner_scale: 4.,
+                center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                max_corner_scale: 1.5,
                 ..default()
             }),
             ..Default::default()
@@ -64,27 +68,17 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
                     height: Val::Px(crate::ui::UI_SCALE * 6.),
                     width: Val::Percent(100.),
                     padding: UiRect::all(Val::Px(8.)),
-                    //padding: UiRect::all(Val::Px(crate::ui::UI_SCALE * 0.5)),
                     justify_content: JustifyContent::End,
                     ..default()
                 },
-                //ImageNode {
-                //    image: ui.range_slider_thumb_active.clone(),
-                //    image_mode: bevy::ui::widget::NodeImageMode::Tiled {
-                //        tile_x: true,
-                //        tile_y: true,
-                //        stretch_value: 0.02,
-                //    },
-                //    ..default()
-                //},
                 ImageNode {
                     // load default state
                     image: ui.window_bar.clone(),
                     image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
                         border: BorderRect::from([5., 5., 4., 4.]),
-                        center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
-                        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
-                        max_corner_scale: 2.5,
+                        center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                        max_corner_scale: 1.5,
                         ..default()
                     }),
                     ..Default::default()
@@ -111,3 +105,9 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
     })
     .with_children(f);
 }
+
+/// TODO: Dragging functionality
+pub fn drag_window() {}
+
+/// TODO: Resize functionality
+pub fn resize_window() {}

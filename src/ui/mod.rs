@@ -44,10 +44,10 @@ const GREY_1_FONT: TextColor = TextColor(Color::srgba(0.4, 0.4, 0.4, 1.0));
 const DARK_FONT: TextColor = TextColor(Color::srgba(0.3, 0.3, 0.3, 1.0));
 
 pub const SMALL_FONT: f32 = 12.;
-pub const SMALL_MEDIUM_FONT: f32 = 16.;
+pub const SMALL_MEDIUM_FONT: f32 = 22.;
 pub const BUTTON_FONT: f32 = 24.;
-pub const MEDIUM_FONT: f32 = 20.;
-pub const LARGE_FONT: f32 = 32.;
+pub const MEDIUM_FONT: f32 = 26.;
+pub const LARGE_FONT: f32 = 36.;
 
 pub fn build_text<'a, T: ChildBuild, F: FnMut(&'a mut T)>(
     text: &'a str,

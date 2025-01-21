@@ -8,13 +8,14 @@ pub fn setup(mut cmd: Commands, backdrop: super::SettingsBackdropQuery, fonts: R
             .spawn((
                 StateScoped(SettingsTabsState::Mods),
                 Node {
-                    width: Val::Px(100.),
-                    height: Val::Px(100.),
-                    align_content: AlignContent::Center,
+                    width: Val::Percent(100.),
+                    height: Val::Percent(100.),
+                    align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
                     flex_direction: FlexDirection::Column,
                     ..default()
                 },
+                BackgroundColor(Color::WHITE),
             ))
             .with_children(|parent| {
                 crate::ui::title_text("Mods coming soon", parent, &fonts);

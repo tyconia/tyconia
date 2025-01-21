@@ -32,7 +32,7 @@ pub struct AudioAssets {
 
 #[derive(AssetCollection, Resource)]
 pub struct FontAssets {
-    #[asset(path = "fonts/Jersey10-Regular.ttf")]
+    #[asset(path = "fonts/Jersey10Charted-Regular.ttf")]
     pub jersey: Handle<Font>,
     #[asset(path = "fonts/Jersey25-Regular.ttf")]
     pub jersey_25: Handle<Font>,
@@ -67,8 +67,6 @@ pub struct UiAssets {
     //pub button_square: Handle<Image>,
     //#[asset(path = "textures/ui/button_square_active.png")]
     //pub button_square_active: Handle<Image>,
-    #[asset(path = "textures/ui/window_bar.png")]
-    pub window_bar: Handle<Image>,
     #[asset(path = "textures/ui/button.png")]
     pub button: Handle<Image>,
     #[asset(path = "textures/ui/button--active.png")]
@@ -78,11 +76,13 @@ pub struct UiAssets {
     #[asset(path = "textures/ui/support_me_on_kofi_badge_dark.png")]
     pub kofi_donation_link_dark: Handle<Image>,
 
+    // buttons
     #[asset(path = "textures/ui/button_alpha.png")]
     pub button_alpha: Handle<Image>,
     #[asset(path = "textures/ui/button_alpha__active.png")]
     pub button_alpha_active: Handle<Image>,
 
+    // range sliders
     #[asset(path = "textures/ui/range_slider_thumb.png")]
     pub range_slider_thumb: Handle<Image>,
     #[asset(path = "textures/ui/range_slider_thumb_active.png")]
@@ -100,11 +100,18 @@ pub struct UiAssets {
     pub back_ico: Handle<Image>,
     #[asset(path = "textures/ui/undo_ico.png")]
     pub undo_ico: Handle<Image>,
+
+    // windows
     #[asset(path = "textures/ui/close_ico.png")]
     pub close_ico: Handle<Image>,
     #[asset(path = "textures/ui/close_active_ico.png")]
     pub close_active_ico: Handle<Image>,
+    #[asset(path = "textures/ui/window_bar.png")]
+    pub window_bar: Handle<Image>,
+    #[asset(path = "textures/ui/window_content.png")]
+    pub window_content: Handle<Image>,
 
+    // settings icons
     #[asset(path = "textures/ui/monitor_ico.png")]
     pub monitor_ico: Handle<Image>,
     #[asset(path = "textures/ui/joystick_ico.png")]

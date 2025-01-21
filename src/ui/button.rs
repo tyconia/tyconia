@@ -1,3 +1,5 @@
+//! TODO: Chill out with the hardcoded values
+
 use super::UI_SCALE;
 use crate::loading::{FontAssets, UiAssets};
 use bevy::prelude::*;
@@ -17,6 +19,10 @@ impl Plugin for ButtonPlugin {
         );
     }
 }
+
+/// Marker component Buttons not deactivating
+#[derive(Component, Clone)]
+pub struct ButtonStayActive;
 
 /// Marker component for custom skin changing behavior
 #[derive(Component, Clone)]
@@ -142,15 +148,16 @@ pub fn spawn_button<'a, T: ChildBuild>(
                     align_items: AlignItems::Center,
                     column_gap: Val::Px(UI_SCALE),
                     row_gap: Val::Px(UI_SCALE),
+                    flex_direction: FlexDirection::RowReverse,
                     ..Default::default()
                 },
                 ImageNode {
                     // load default state
                     image: ui.button_alpha.clone(),
                     image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                        border: BorderRect::from([5., 5., 4., 4.]),
-                        center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
-                        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
+                        border: BorderRect::from([6., 6., 5., 5.]),
+                        center_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
+                        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
                         max_corner_scale: 2.5,
                         ..default()
                     }),
@@ -193,21 +200,6 @@ pub fn spawn_button<'a, T: ChildBuild>(
                         image_size,
                     } => {
                         parent.spawn((
-                            Node {
-                                //height: Val::Px(UI_SCALE * 3.),
-                                height: image_size,
-                                aspect_ratio: Some(1.),
-                                //flex_grow: 1.,
-                                ..default()
-                            },
-                            ImageNode {
-                                image: icon,
-                                ..default()
-                            },
-                        ));
-
-                        //crate::ui::section_text(&text, parent, &fonts);
-                        parent.spawn((
                             Text::new(text),
                             TextFont {
                                 font: fonts.jersey.clone(),
@@ -215,6 +207,17 @@ pub fn spawn_button<'a, T: ChildBuild>(
                                 font_smoothing: FontSmoothing::None,
                             },
                             TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                        ));
+                        parent.spawn((
+                            Node {
+                                height: image_size,
+                                aspect_ratio: Some(1.),
+                                ..default()
+                            },
+                            ImageNode {
+                                image: icon,
+                                ..default()
+                            },
                         ));
                     }
                 };

@@ -148,8 +148,8 @@ fn setup(
                     position_type: PositionType::Absolute,
                     right: Val::Px(32.),
                     bottom: Val::Px(48.),
-                    height: Val::Px(90.),
-                    width: Val::Px(180.),
+                    height: Val::Px(45.),
+                    width: Val::Px(90.),
                     ..default()
                 },
                 StateScoped(MenuNavState::Root),

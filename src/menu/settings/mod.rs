@@ -83,23 +83,19 @@ pub(crate) fn setup(
             &fonts,
             |parent| {
                 parent
-                    .spawn((
-                        Node {
-                            width: Val::Percent(100.),
-                            height: Val::Px(UI_SCALE * 5.),
-                            flex_direction: FlexDirection::Row,
-                            padding: UiRect::all(Val::Px(UI_SCALE)),
-                            //flex_grow: 1.,
-                            flex_wrap: FlexWrap::Wrap,
-                            justify_content: JustifyContent::End,
-                            row_gap: Val::Px(UI_SCALE),
-                            column_gap: Val::Px(UI_SCALE),
-                            ..default()
-                        },
-                        //BackgroundColor(Color::WHITE)
-                    ))
+                    .spawn((Node {
+                        width: Val::Percent(100.),
+                        height: Val::Px(UI_SCALE * 5.),
+                        flex_direction: FlexDirection::Row,
+                        padding: UiRect::all(Val::Px(UI_SCALE)),
+                        flex_wrap: FlexWrap::Wrap,
+                        justify_content: JustifyContent::End,
+                        row_gap: Val::Px(UI_SCALE),
+                        column_gap: Val::Px(UI_SCALE),
+                        ..default()
+                    },))
                     .with_children(|parent| {
-                        let tabs = vec![
+                        vec![
                             (
                                 "Display",
                                 ui.monitor_ico.clone(),
@@ -122,9 +118,9 @@ pub(crate) fn setup(
                                 SettingsTabsState::Localization,
                             ),
                             ("Mods", ui.magic_axe_ico.clone(), SettingsTabsState::Mods),
-                        ];
-
-                        tabs.into_iter().for_each(|(name, icon, tab)| {
+                        ]
+                        .into_iter()
+                        .for_each(|(name, icon, tab)| {
                             parent
                                 .spawn(Node {
                                     flex_grow: 1.,
@@ -180,8 +176,10 @@ fn click_setting_tab(
 }
 
 fn reskin_active_tab(
+    mut cmd: Commands,
     active_tab: Res<State<SettingsTabsState>>,
     mut skins: Query<(
+        Option<&Children>,
         &mut ImageNode,
         &ButtonSkins,
         &ChangeStates<SettingsTabsState>,
@@ -191,11 +189,20 @@ fn reskin_active_tab(
 
     skins
         .iter_mut()
-        .for_each(|(mut current_skin, button_skins, state)| {
+        .for_each(|(children, mut current_skin, button_skins, state)| {
             if state.0 == *active_tab {
                 current_skin.image = button_skins.active.clone();
+                children.map(|children| {
+                    cmd.entity(children.first().unwrap().clone())
+                        .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
+                });
             } else {
                 current_skin.image = button_skins.normal.clone();
+
+                children.map(|children| {
+                    cmd.entity(children.first().unwrap().clone())
+                        .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
+                });
             }
         });
 }

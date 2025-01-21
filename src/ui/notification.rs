@@ -53,6 +53,8 @@ impl Notification {
     }
 }
 
+pub fn spawn_notification_space() {}
+
 pub fn spawn_notification(
     cmd: &mut Commands,
     notification: Notification,
@@ -79,8 +81,8 @@ pub fn spawn_notification(
             image: ui.button_alpha_active.clone(),
             image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
                 border: BorderRect::from([5., 5., 4., 4.]),
-                center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
-                sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.0 },
+                center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
                 max_corner_scale: 4.,
                 ..default()
             }),
