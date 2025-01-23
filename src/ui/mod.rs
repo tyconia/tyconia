@@ -108,7 +108,10 @@ pub fn body_text<'a, T: ChildBuild>(
         TextFont {
             font: fonts.jersey_25.clone(),
             font_smoothing: FontSmoothing::None,
-            font_size: MEDIUM_FONT,
+            font_size: SMALL_MEDIUM_FONT,
         },
     ))
 }
+
+#[derive(Debug, Component)]
+pub struct Scrollable;

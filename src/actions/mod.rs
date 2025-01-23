@@ -37,6 +37,12 @@ impl Plugin for ActionsPlugin {
     }
 }
 
+pub trait InputAction {
+    fn display(&self) -> String;
+
+    fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry>;
+}
+
 use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
 use serde::de::DeserializeSeed;
 use std::fs::File;

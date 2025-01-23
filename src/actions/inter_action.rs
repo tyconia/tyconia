@@ -1,4 +1,4 @@
-use crate::actions::mappings::InputMappings;
+use crate::actions::*;
 use bevy::prelude::*;
 
 #[derive(Event, Reflect, Eq, PartialEq, Hash, Clone, Debug, Copy)]
@@ -14,6 +14,26 @@ pub enum InterAction {
     Distribute,
     /// Copy entity attributes
     CopyConfiguration,
+    /// Paste entity attributes
+    PasteConfiguration,
+}
+
+impl InputAction for InterAction {
+    fn display(&self) -> String {
+        match *self {
+            Self::Pipette => "Grab entity",
+            Self::Construct => "Build entity",
+            Self::Deconstruct => "Destroy entity",
+            Self::Distribute => "Give item to entity",
+            Self::CopyConfiguration => "Copy configuration from entity",
+            Self::PasteConfiguration => "Paste configuration from entity",
+        }
+        .into()
+    }
+
+    fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry> {
+        input_mapping.inter_actions.get(&*self).cloned()
+    }
 }
 
 pub(crate) fn dispatch_inter_actions(

@@ -27,11 +27,32 @@ pub struct SliderDragged;
 pub struct Slider {
     pub steps: usize,
     pub range: Range<f32>,
-    pub value: f32,
+    /// 0-100. percentage 
+    pub percentage: f32,
 }
 
 impl Slider {
-    pub fn progress(&self) {}
+    pub fn new(range: Range<f32>, value: f32, steps: usize) -> Self {
+        Self {
+            percentage: Self::percent_range(&range, value),
+            range,
+            steps,
+        }
+    }
+
+    /// Converts slider value to range proportions
+    pub fn valued(&self) -> f32 {
+        Self::value_range(&self.range, self.percentage)
+    }
+
+    // converts percentage to range proportions
+    pub fn value_range(range: &Range<f32>, value: f32) -> f32 {
+        range.start + (value / 100.) * (range.end - range.start)
+    }
+
+    pub fn percent_range(range: &Range<f32>, value: f32) -> f32 {
+        ((value - range.start) / (range.end - range.start)) * 100.0
+    }
 }
 
 pub fn labeled_slider<T: ChildBuild, C: Bundle>(
@@ -90,7 +111,7 @@ pub fn draw_slider<T: ChildBuild, C: Bundle>(
                 height: Val::Px(20.),
                 aspect_ratio: Some(16. / 9.),
                 position_type: PositionType::Absolute,
-                left: Val::Percent(slider.value as f32),
+                left: Val::Percent(slider.percentage / 100. * 90.),
                 top: Val::Percent(-100.0), // Position top edge at 50% of parent height
                 ..default()
             },
@@ -155,9 +176,9 @@ pub fn update_range_slider(
                 .fold(0., |acc, delta| acc + delta.x);
 
             const FACTOR: f32 = 0.4;
-            slider.value = slider.value as f32 + delta * FACTOR;
-            slider.value = slider.value.clamp(0., 90.);
-            node.left = Val::Percent(slider.value as f32);
+            slider.percentage = slider.percentage as f32 + delta * FACTOR;
+            slider.percentage = slider.percentage.clamp(0., 100.);
+            node.left = Val::Percent(slider.percentage / 100. * 90.);
         }
     }
 

@@ -83,78 +83,95 @@ pub(crate) fn setup(
             &fonts,
             |parent| {
                 parent
-                    .spawn((Node {
-                        width: Val::Percent(100.),
-                        height: Val::Px(UI_SCALE * 5.),
-                        flex_direction: FlexDirection::Row,
-                        padding: UiRect::all(Val::Px(UI_SCALE)),
-                        flex_wrap: FlexWrap::Wrap,
-                        justify_content: JustifyContent::End,
-                        row_gap: Val::Px(UI_SCALE),
-                        column_gap: Val::Px(UI_SCALE),
-                        ..default()
-                    },))
+                    .spawn((
+                        Node {
+                            width: Val::Percent(100.),
+                            //height: Val::Px(UI_SCALE * 5.),
+                            padding: UiRect::all(Val::Px(UI_SCALE)),
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::End,
+                            row_gap: Val::Px(UI_SCALE),
+                            column_gap: Val::Px(UI_SCALE),
+                            ..default()
+                        },
+                        //BackgroundColor(Color::BLACK),
+                    ))
                     .with_children(|parent| {
-                        vec![
-                            (
-                                "Display",
-                                ui.monitor_ico.clone(),
-                                SettingsTabsState::Graphics,
-                            ),
-                            (
-                                "Interface",
-                                ui.interface_ico.clone(),
-                                SettingsTabsState::Interface,
-                            ),
-                            ("Audio", ui.speaker_ico.clone(), SettingsTabsState::Audio),
-                            (
-                                "Controls",
-                                ui.joystick_ico.clone(),
-                                SettingsTabsState::Controls,
-                            ),
-                            (
-                                "Language",
-                                ui.earth_ico.clone(),
-                                SettingsTabsState::Localization,
-                            ),
-                            ("Mods", ui.magic_axe_ico.clone(), SettingsTabsState::Mods),
-                        ]
-                        .into_iter()
-                        .for_each(|(name, icon, tab)| {
-                            parent
-                                .spawn(Node {
-                                    flex_grow: 1.,
-                                    ..default()
-                                })
-                                .with_children(|parent| {
-                                    spawn_button(
-                                        ButtonType::LabeledIcon {
-                                            icon,
-                                            text: name.into(),
-                                            font_size: crate::ui::BUTTON_FONT,
-                                            image_size: Val::Px(crate::ui::UI_SCALE * 3.),
-                                        },
-                                        (ChangeStates(tab), CustomSkinBehavior),
-                                        &mut *parent,
-                                        &fonts,
-                                        &ui,
-                                    );
-                                });
-                        });
-
-                        parent.spawn((
-                            SettingsBackdrop,
-                            Node {
+                        parent
+                            .spawn(Node {
+                                flex_direction: FlexDirection::Row,
+                                flex_wrap: FlexWrap::Wrap,
                                 width: Val::Percent(100.),
-                                height: Val::Percent(100.),
-                                flex_direction: FlexDirection::Column,
-                                padding: UiRect::all(Val::Px(UI_SCALE)),
-                                border: UiRect::all(Val::Px(4.)),
+                                column_gap: Val::Px(UI_SCALE),
+                                row_gap: Val::Px(UI_SCALE),
                                 ..default()
-                            },
-                            BorderRadius::all(Val::Px(2.)),
-                        ));
+                            })
+                            .with_children(|parent| {
+                                vec![
+                                    (
+                                        "Display",
+                                        ui.monitor_ico.clone(),
+                                        SettingsTabsState::Graphics,
+                                    ),
+                                    (
+                                        "Interface",
+                                        ui.interface_ico.clone(),
+                                        SettingsTabsState::Interface,
+                                    ),
+                                    ("Audio", ui.speaker_ico.clone(), SettingsTabsState::Audio),
+                                    (
+                                        "Controls",
+                                        ui.joystick_ico.clone(),
+                                        SettingsTabsState::Controls,
+                                    ),
+                                    (
+                                        "Language",
+                                        ui.earth_ico.clone(),
+                                        SettingsTabsState::Localization,
+                                    ),
+                                    ("Mods", ui.magic_axe_ico.clone(), SettingsTabsState::Mods),
+                                ]
+                                .into_iter()
+                                .for_each(|(name, icon, tab)| {
+                                    parent
+                                        .spawn(Node {
+                                            flex_grow: 1.,
+                                            max_height: Val::Px(UI_SCALE * 5.),
+                                            ..default()
+                                        })
+                                        .with_children(|parent| {
+                                            spawn_button(
+                                                ButtonType::LabeledIcon {
+                                                    icon,
+                                                    text: name.into(),
+                                                    font_size: crate::ui::BUTTON_FONT,
+                                                    image_size: Val::Px(crate::ui::UI_SCALE * 3.),
+                                                },
+                                                (ChangeStates(tab), CustomSkinBehavior),
+                                                &mut *parent,
+                                                &fonts,
+                                                &ui,
+                                            );
+                                        });
+                                });
+                            });
                     });
+
+                parent.spawn((
+                    SettingsBackdrop,
+                    Node {
+                        width: Val::Percent(100.),
+                        overflow: Overflow::scroll_y(),
+                        flex_direction: FlexDirection::Column,
+                        padding: UiRect::all(Val::Px(UI_SCALE)),
+                        border: UiRect::all(Val::Px(4.)),
+                        ..default()
+                    },
+                    BorderRadius::all(Val::Px(2.)),
+                    Interaction::Hovered,
+                    ScrollPosition::DEFAULT,
+                    super::Scrollable,
+                ));
             },
         );
     });

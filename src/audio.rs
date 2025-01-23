@@ -5,10 +5,17 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
 #[derive(Debug, Resource)]
-pub struct SFXAudioChannel;
+pub struct MasterVolume(pub f32);
 
 #[derive(Debug, Resource)]
-pub struct MusicAudioChannel;
+pub struct SFXAudioChannel {
+    pub volume: Volume,
+}
+
+#[derive(Debug, Resource)]
+pub struct MusicAudioChannel {
+    pub volume: Volume,
+}
 
 pub struct InternalAudioPlugin;
 

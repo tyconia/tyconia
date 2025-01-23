@@ -1,6 +1,8 @@
 use super::SettingsTabsState;
+use crate::actions::*;
 use crate::loading::*;
 use crate::ui::*;
+
 use bevy::prelude::*;
 
 use crate::actions::*;
@@ -10,6 +12,8 @@ pub fn setup(
     backdrop: super::SettingsBackdropQuery,
     fonts: Res<FontAssets>,
     ui: Res<UiAssets>,
+
+    input_mappings: Res<InputMappings>,
 ) {
     cmd.entity(backdrop.single()).with_children(|parent| {
         parent
@@ -22,24 +26,74 @@ pub fn setup(
             ))
             .with_children(|parent| {
                 section_text("Interaction", parent, &fonts);
-                input_map_entry("Summon menu".into(), parent, &fonts, &ui);
-                input_map_entry("Next hotbar slot".into(), parent, &fonts, &ui);
-                input_map_entry("Previous hotbar slot".into(), parent, &fonts, &ui);
+                input_map_entry(InterAction::Construct, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(
+                    InterAction::Deconstruct,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    InterAction::Distribute,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(InterAction::Pipette, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(
+                    InterAction::CopyConfiguration,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    InterAction::PasteConfiguration,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
                 separator(parent);
 
                 section_text("Movement", parent, &fonts);
-                input_map_entry("North".into(), parent, &fonts, &ui);
-                input_map_entry("South menu".into(), parent, &fonts, &ui);
-                input_map_entry("East".into(), parent, &fonts, &ui);
-                input_map_entry("West".into(), parent, &fonts, &ui);
+                input_map_entry(MovementAction::North, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(MovementAction::West, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(MovementAction::South, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(MovementAction::East, parent, &fonts, &ui, &input_mappings);
                 separator(parent);
 
                 section_text("Interface", parent, &fonts);
-                input_map_entry("Zoom".into(), parent, &fonts, &ui);
-                input_map_entry("Menu".into(), parent, &fonts, &ui);
+                input_map_entry(UiAction::Menu, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::Zoom(2), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(
+                    UiAction::HotbarSlotNext,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlotPrevious,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(UiAction::HotbarSlot(0), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarSlot(1), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarSlot(2), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarSlot(3), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarSlot(4), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarSlot(5), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarSlot(6), parent, &fonts, &ui, &input_mappings);
+
                 separator(parent);
 
                 section_text("Custom", parent, &fonts);
+                separator(parent);
             });
     });
 }
@@ -52,11 +106,13 @@ pub struct RemapButton;
 #[require(Button)]
 pub struct RemapButtonActive {}
 
-fn input_map_entry(
-    action: String,
+fn input_map_entry<A: InputAction>(
+    action: A,
     parent: &mut ChildBuilder,
     fonts: &Res<FontAssets>,
     ui: &Res<UiAssets>,
+
+    input_mappings: &Res<InputMappings>,
 ) {
     parent
         .spawn(Node {
@@ -68,8 +124,41 @@ fn input_map_entry(
             ..default()
         })
         .with_children(|parent| {
-            body_text(&action, parent, &fonts);
-            //spawn_button("".into(), (), parent, &fonts, &ui);
+            body_text(&action.display(), parent, &fonts);
+
+            let (primary, secondary) = {
+                action.desktop_mapping(&input_mappings).map_or(
+                    ("".to_string(), "".to_string()),
+                    |mapping| {
+                        (
+                            mapping
+                                .primary
+                                .iter()
+                                .map(|d| {
+                                    d.to_string()
+                                        .replace("Digit", "")
+                                        .replace("Key", "")
+                                        .replace("Arrow", "")
+                                        .replace("Button", "Mouse")
+                                })
+                                .collect::<Vec<String>>()
+                                .join(" + "),
+                            mapping
+                                .secondary
+                                .iter()
+                                .map(|d| {
+                                    d.to_string()
+                                        .replace("Digit", "")
+                                        .replace("Key", "")
+                                        .replace("Arrow", "")
+                                        .replace("Button", "Mouse")
+                                })
+                                .collect::<Vec<String>>()
+                                .join(" + "),
+                        )
+                    },
+                )
+            };
 
             parent
                 .spawn(Node {
@@ -90,7 +179,7 @@ fn input_map_entry(
                                     image: ui.undo_ico.clone(),
                                     image_size: Val::Px(16.),
                                 },
-                                (),
+                                (RemapButton::default(), Visibility::Hidden),
                                 parent,
                                 &fonts,
                                 &ui,
@@ -106,8 +195,12 @@ fn input_map_entry(
                         .with_children(|parent| {
                             spawn_button(
                                 ButtonType::Text {
-                                    text: "<unbounded>".into(),
-                                    font_size: UI_SCALE * 3.,
+                                    font_size: if primary.len() < 13 {
+                                        UI_SCALE * 2.5
+                                    } else {
+                                        UI_SCALE * 1.5
+                                    },
+                                    text: primary,
                                 },
                                 RemapButton::default(),
                                 parent,
@@ -125,8 +218,12 @@ fn input_map_entry(
                         .with_children(|parent| {
                             spawn_button(
                                 ButtonType::Text {
-                                    text: "<unbounded>".into(),
-                                    font_size: UI_SCALE * 3.,
+                                    font_size: if secondary.len() < 13 {
+                                        UI_SCALE * 2.5
+                                    } else {
+                                        UI_SCALE * 1.5
+                                    },
+                                    text: secondary,
                                 },
                                 RemapButton::default(),
                                 parent,

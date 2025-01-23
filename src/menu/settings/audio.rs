@@ -31,11 +31,7 @@ pub fn setup(
                     (),
                     &ui,
                     &fonts,
-                    Slider {
-                        steps: usize::MAX,
-                        range: SILENCE_TO_MAX_SAFE_DECIBELS,
-                        value: 50.,
-                    },
+                    Slider::new(SILENCE_TO_MAX_SAFE_DECIBELS, 10., usize::MIN),
                 );
                 spawn_checkbox((), parent, &fonts, &ui);
                 //labeled_slider(parent, "Music", (), &ui, &fonts, 50.);

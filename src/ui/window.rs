@@ -1,13 +1,24 @@
 //! Textured container for UI elements
 use crate::loading::*;
 use crate::ui::DepressButton;
+use bevy::input::mouse::*;
 use bevy::prelude::*;
 
 pub struct WindowPlugin;
 
 impl Plugin for WindowPlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (scroll_window, drag_window, resize_window)
+                .run_if(any_with_component::<crate::ui::Scrollable>),
+        );
+    }
 }
+
+/// Window marker
+#[derive(Debug, Component)]
+pub struct Scrollable;
 
 /// TODO: Add window titles
 #[derive(Debug, Component)]
@@ -26,16 +37,10 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
         Node {
             justify_content: JustifyContent::Start,
             flex_direction: FlexDirection::Column,
-            align_items: AlignItems::End,
-            //justify_content: JustifyContent::Center,
-            //padding: UiRect::axes(Val::Px(16.), Val::Px(12.)),
             column_gap: Val::Px(8.),
-            overflow: Overflow::scroll_y(),
-            overflow_clip_margin: OverflowClipMargin::content_box(),
             height: Val::Vh(70.),
             aspect_ratio: Some(4. / 3.),
             min_height: Val::Px(400.),
-            position_type: PositionType::Absolute,
             ..default()
         },
         ImageNode {
@@ -50,10 +55,6 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             ..Default::default()
         },
         BackgroundColor(Color::WHITE),
-        ScrollPosition {
-            offset_x: 0.,
-            offset_y: 0.,
-        },
     ))
     .with_children(|parent| {
         let close_skins = crate::ui::ButtonSkins {
@@ -61,12 +62,11 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             active: ui.close_active_ico.clone(),
         };
 
-        // window bar
         parent
             .spawn((
+                // title bar
                 Node {
-                    height: Val::Px(crate::ui::UI_SCALE * 6.),
-                    width: Val::Percent(100.),
+                    min_height: Val::Px(crate::ui::UI_SCALE * 6.),
                     padding: UiRect::all(Val::Px(8.)),
                     justify_content: JustifyContent::End,
                     ..default()
@@ -83,14 +83,13 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
                     }),
                     ..Default::default()
                 },
-                BackgroundColor(Color::srgba_u8(200, 200, 200, 255)),
+                //BackgroundColor(Color::srgba_u8(200, 200, 200, 255)),
             ))
             .with_children(|parent| {
                 parent.spawn((
                     DepressButton::default(),
                     window_close_components,
                     Node {
-                        //width: Val::Px(crate::ui::UI_SCALE * 4.),
                         height: Val::Percent(100.),
                         aspect_ratio: Some(1.),
                         ..default()
@@ -104,6 +103,28 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             });
     })
     .with_children(f);
+}
+
+pub fn scroll_window(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut query: Query<(Entity, &mut ScrollPosition, &Interaction), With<super::Scrollable>>,
+) {
+    for event in mouse_wheel_events.read() {
+        for (entity, mut scroll_position, interaction) in query.iter_mut() {
+            if *interaction == Interaction::Hovered {
+                let scroll_amount = match event.unit {
+                    MouseScrollUnit::Line => event.y * 20.0,
+                    MouseScrollUnit::Pixel => event.y,
+                };
+
+                scroll_position.offset_y += scroll_amount;
+                info!(
+                    "scroll position {} from {}",
+                    scroll_position.offset_y, entity
+                );
+            }
+        }
+    }
 }
 
 /// TODO: Dragging functionality

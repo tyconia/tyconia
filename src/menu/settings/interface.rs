@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use crate::loading::*;
 use crate::ui::*;
 
-const MIN_UI_SCALE: f32 = 0.2;
-const MAX_UI_SCALE: f32 = 2.;
+const MIN_UI_SCALE: f32 = 0.9;
+const MAX_UI_SCALE: f32 = 1.4;
 
 pub fn setup(
     mut cmd: Commands,
@@ -14,11 +14,7 @@ pub fn setup(
 
     ui_scale: Res<UiScale>,
 ) {
-    let ui_scale_slider = Slider {
-        range: (MIN_UI_SCALE..MAX_UI_SCALE),
-        steps: 16,
-        value: ui_scale.0,
-    };
+    let ui_scale_slider = Slider::new(MIN_UI_SCALE..MAX_UI_SCALE, ui_scale.0, usize::MAX);
 
     cmd.entity(backdrop.single()).with_children(|parent| {
         parent
@@ -44,12 +40,8 @@ pub fn ui_scaling(
     mut ui_scale: ResMut<UiScale>,
     ui_scaler: Query<&Slider, (With<UiScaler>, Changed<Slider>)>,
 ) {
-    const MIN_UI_SCALE: f32 = 1.4;
-    const MAX_UI_SCALE: f32 = 1.;
-
     let _ = ui_scaler.get_single().map(|slider| {
-        ui_scale.0 = slider.value.clamp(0.8, 1.4);
-        info!("Scaling is {}", slider.value);
-        //ui_scale.0 += 0.01;
+        ui_scale.0 = slider.valued();
+        info!("Scaling is {}", slider.valued());
     });
 }

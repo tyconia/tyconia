@@ -27,6 +27,26 @@ pub enum MovementAction {
     SouthEast,
 }
 
+impl InputAction for MovementAction {
+    fn display(&self) -> String {
+        match *self {
+            Self::North => "Move north",
+            Self::South => "Move south",
+            Self::East => "Move east",
+            Self::West => "Move west",
+            Self::NorthEast => "Move north-east",
+            Self::SouthEast => "Move south-east",
+            Self::NorthWest => "Move north-west",
+            Self::SouthWest => "Move south-west",
+        }
+        .into()
+    }
+
+    fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry> {
+        input_mapping.movement_actions.get(&*self).cloned()
+    }
+}
+
 impl MovementAction {
     /// unit north direction
     pub const NORTH: Vec2 = Vec2::Y;

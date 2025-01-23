@@ -103,6 +103,19 @@ pub enum DesktopControl {
     Mouse(Mouse),
 }
 
+impl ToString for DesktopControl {
+    fn to_string(&self) -> String {
+        match *self {
+            Self::Key(code) => {
+                format!("{:?}", code)
+            }
+            Self::Mouse(m) => {
+                format!("{:?}", m)
+            }
+        }
+    }
+}
+
 /// [`Resource`] stores input-actions mappings for configuration
 #[derive(Resource, Reflect, Eq, PartialEq, Default, Clone, Debug, Asset)]
 //#[reflect(from_reflect = false)]

@@ -21,6 +21,23 @@ pub enum UiAction {
     Menu,
 }
 
+impl InputAction for UiAction {
+    fn display(&self) -> String {
+        match *self {
+            Self::Menu => "Summon menu".into(),
+            Self::Zoom(factor) => format!("Zoom with {} factor", factor),
+            Self::HotbarSlotNext => "Next hotbar slot".into(),
+            Self::HotbarSlotPrevious => "Previous hotbar slot".into(),
+            Self::Hotbar(index) => format!("Switch to hotbar {}", index + 1),
+            Self::HotbarSlot(index) => format!("Switch to hotbar slot {}", index + 1),
+        }
+    }
+
+    fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry> {
+        input_mapping.ui_actions.get(&*self).cloned()
+    }
+}
+
 impl UiAction {
     /// gives zoom factor if it is a zoom, useful for filters
     pub fn zoom(&self) -> Option<isize> {
