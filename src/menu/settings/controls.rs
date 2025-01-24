@@ -82,13 +82,55 @@ pub fn setup(
                     &ui,
                     &input_mappings,
                 );
-                input_map_entry(UiAction::HotbarSlot(0), parent, &fonts, &ui, &input_mappings);
-                input_map_entry(UiAction::HotbarSlot(1), parent, &fonts, &ui, &input_mappings);
-                input_map_entry(UiAction::HotbarSlot(2), parent, &fonts, &ui, &input_mappings);
-                input_map_entry(UiAction::HotbarSlot(3), parent, &fonts, &ui, &input_mappings);
-                input_map_entry(UiAction::HotbarSlot(4), parent, &fonts, &ui, &input_mappings);
-                input_map_entry(UiAction::HotbarSlot(5), parent, &fonts, &ui, &input_mappings);
-                input_map_entry(UiAction::HotbarSlot(6), parent, &fonts, &ui, &input_mappings);
+                input_map_entry(
+                    UiAction::HotbarSlot(0),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlot(1),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlot(2),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlot(3),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlot(4),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlot(5),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
+                input_map_entry(
+                    UiAction::HotbarSlot(6),
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
 
                 separator(parent);
 
