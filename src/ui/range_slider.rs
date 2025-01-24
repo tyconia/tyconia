@@ -27,7 +27,7 @@ pub struct SliderDragged;
 pub struct Slider {
     pub steps: usize,
     pub range: Range<f32>,
-    /// 0-100. percentage 
+    /// 0-100. percentage
     pub percentage: f32,
 }
 
