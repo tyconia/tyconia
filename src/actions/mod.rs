@@ -25,11 +25,17 @@ pub struct ActionsPlugin;
 
 impl Plugin for ActionsPlugin {
     fn build(&self, app: &mut App) {
+        
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_systems(Startup, (load_input_map,).chain());
+
+        #[cfg(target_arch = "wasm32")]
+        app.add_systems(Startup, (load_input_map,).chain());
+
         app.add_plugins((mappings::InputMappingsPlugin, cursors::CursorsPlugin))
             .add_event::<movement::MovementAction>()
             .add_event::<ui::UiAction>()
             .add_event::<inter_action::InterAction>()
-            .add_systems(Startup, (load_input_map,).chain())
             .add_systems(
                 Update,
                 (set_ui_actions,).run_if(in_state(GameState::Playing)),
@@ -48,7 +54,23 @@ use serde::de::DeserializeSeed;
 use std::fs::File;
 use std::io::{Read, Write};
 
+pub const DEFAULT_MAPPINGS: &'static str = include_str!("../../assets/config/input_mappings.ron");
+
 // Loads input map
+#[cfg(target_arch = "wasm32")]
+fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings::InputMappings>) {
+    let mut deserializer = ron::de::Deserializer::from_str(&DEFAULT_MAPPINGS).unwrap();
+    let type_registry = type_registry.read();
+    let reflect_deserializer = ReflectDeserializer::new(&type_registry);
+
+    let partial_reflect_value =
+        reflect_deserializer.deserialize(&mut deserializer).unwrap();
+
+    *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
+}
+
+// Loads input map
+#[cfg(not(target_arch = "wasm32"))]
 fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings::InputMappings>) {
     // load platform specific app directories
     let project_dir = directories::ProjectDirs::from(
@@ -64,30 +86,30 @@ fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings:
     let file_name = std::path::Path::new("input_mappings.ron");
     let file_path = config_dir.join(file_name);
 
-    match File::open(&file_path) {
-        Ok(mut file) => {
-            let mut ron = String::new();
-            file.read_to_string(&mut ron).unwrap();
-
-            let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
-            let reflect_deserializer = ReflectDeserializer::new(&type_registry);
-
-            let partial_reflect_value =
-                reflect_deserializer.deserialize(&mut deserializer).unwrap();
-
-            *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
-
-            info!("input map loaded successfully {:#?}", *map);
-        }
-
-        Err(e) => {
+    let ron = File::open(&file_path).map_or_else(
+        |err| {
             error!(
                 "Failed to open file {}, at {}, Loaded default configuration instead",
-                e,
+                err,
                 file_path.to_string_lossy()
             );
-        }
-    }
+
+            DEFAULT_MAPPINGS.to_string()
+        },
+        |mut file| {
+            let mut ron = String::new();
+            file.read_to_string(&mut ron).unwrap();
+            ron
+        },
+    );
+
+    let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
+    let reflect_deserializer = ReflectDeserializer::new(&type_registry);
+
+    let partial_reflect_value =
+        reflect_deserializer.deserialize(&mut deserializer).unwrap();
+
+    *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
 }
 
 fn print_input_map(type_registry: ResMut<AppTypeRegistry>, map: Res<mappings::InputMappings>) {

@@ -107,6 +107,8 @@ fn setup(
                     //("Load Game", None, Some(MenuNavState::LoadGame)),
                     ("Sandbox", Some(GameState::Playing), None),
                     ("Settings", None, Some(MenuNavState::Settings)),
+
+                    #[cfg(not(target_arch = "wasm32"))]
                     ("Quit", Some(GameState::Quit), None),
                 ] {
                     match (*game_state, *menu_nav) {
