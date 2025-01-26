@@ -32,6 +32,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             button::ButtonPlugin,
+            checkbox::CheckboxPlugin,
             range_slider::RangeSliderPlugin,
             window::WindowPlugin,
             notification::NotificationPlugin,

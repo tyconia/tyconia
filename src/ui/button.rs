@@ -4,6 +4,7 @@ use super::UI_SCALE;
 use crate::loading::{FontAssets, UiAssets};
 use bevy::prelude::*;
 use bevy::text::FontSmoothing;
+use std::time::Instant;
 
 pub struct ButtonPlugin;
 
@@ -47,6 +48,10 @@ impl From<&Res<'_, UiAssets>> for ButtonSkins {
         }
     }
 }
+/// Abstraction of a clicked button
+#[derive(Component, Debug)]
+#[require(Button)]
+pub struct DepressButtonLastInteract(pub Instant);
 
 /// Abstraction of a clicked button
 #[derive(Component, Debug)]
@@ -81,7 +86,7 @@ pub enum ButtonType {
 
     /// Icons will use a square aspect ratio
     Icon {
-        image: Handle<Image>,
+        image: Option<Handle<Image>>,
         image_size: Val,
     },
 
@@ -113,118 +118,119 @@ where
 /// * `content_type` - content of the button
 /// * `components` - components you want to include for interactions
 /// * `commands` - commands used to spawn the button
-pub fn spawn_button<'a, T: ChildBuild>(
+pub fn spawn_button<'a, 'b>(
     content_type: ButtonType,
     components: impl Bundle,
-    commands: &'a mut T,
+    commands: &'a mut ChildBuilder<'b>,
     fonts: &Res<FontAssets>,
     ui: &Res<UiAssets>,
-) -> &'a mut T {
+) -> EntityCommands<'a> {
     let button_padding = match content_type {
         ButtonType::Text { .. } => UiRect::axes(Val::Px(8. * UI_SCALE), Val::Px(2. * UI_SCALE)),
         ButtonType::LabeledIcon { .. } => UiRect::axes(Val::Px(UI_SCALE * 1.6), Val::Px(UI_SCALE)),
         _ => UiRect::all(Val::Px(2.) * UI_SCALE),
     };
 
-    commands
-        .spawn((Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            flex_grow: 1.,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },))
-        .with_children(|children| {
-            let button_skins = ButtonSkins::from(&*ui);
+    let mut entity_cmd = commands.spawn((Node {
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        flex_grow: 1.,
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::Center,
+        ..default()
+    },));
 
-            let mut parent = children.spawn((
-                Node {
-                    width: Val::Percent(100.),
-                    height: Val::Percent(100.),
-                    padding: button_padding,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    column_gap: Val::Px(UI_SCALE),
-                    row_gap: Val::Px(UI_SCALE),
-                    flex_direction: FlexDirection::RowReverse,
-                    ..Default::default()
-                },
-                ImageNode {
-                    // load default state
-                    image: ui.button_alpha.clone(),
-                    image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                        border: BorderRect::from([6., 6., 5., 5.]),
-                        center_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
-                        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
-                        max_corner_scale: 2.5,
+    entity_cmd.with_children(|children| {
+        let button_skins = ButtonSkins::from(&*ui);
+
+        let mut parent = children.spawn((
+            Node {
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                padding: button_padding,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(UI_SCALE),
+                row_gap: Val::Px(UI_SCALE),
+                flex_direction: FlexDirection::RowReverse,
+                ..Default::default()
+            },
+            ImageNode {
+                // load default state
+                image: ui.button_alpha.clone(),
+                image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
+                    border: BorderRect::from([6., 6., 5., 5.]),
+                    center_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
+                    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
+                    max_corner_scale: 2.5,
+                    ..default()
+                }),
+                ..Default::default()
+            },
+            DepressButton::default(),
+            components,
+            button_skins,
+        ));
+
+        parent.with_children(|parent| {
+            match content_type {
+                ButtonType::Text { text, font_size } => {
+                    parent.spawn((
+                        Text::new(text),
+                        TextFont {
+                            font: fonts.jersey.clone(),
+                            font_size,
+                            font_smoothing: FontSmoothing::None,
+                        },
+                        TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                    ));
+                }
+
+                ButtonType::Icon { image, image_size } => {
+                    let mut child_build = parent.spawn((Node {
+                        height: image_size,
+                        aspect_ratio: Some(1.),
                         ..default()
-                    }),
-                    ..Default::default()
-                },
-                DepressButton::default(),
-                components,
-                button_skins,
-            ));
+                    },));
 
-            parent.with_children(|parent| {
-                match content_type {
-                    ButtonType::Text { text, font_size } => {
-                        parent.spawn((
-                            Text::new(text),
-                            TextFont {
-                                font: fonts.jersey.clone(),
-                                font_size,
-                                font_smoothing: FontSmoothing::None,
-                            },
-                            TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
-                        ));
+                    if let Some(image) = image {
+                        child_build.insert(ImageNode { image, ..default() });
                     }
+                }
 
-                    ButtonType::Icon { image, image_size } => {
-                        parent.spawn((
-                            Node {
-                                height: image_size,
-                                aspect_ratio: Some(1.),
-                                ..default()
-                            },
-                            ImageNode { image, ..default() },
-                        ));
-                    }
-
-                    ButtonType::LabeledIcon {
-                        text,
-                        icon,
-                        font_size,
-                        image_size,
-                    } => {
-                        parent.spawn((
-                            Text::new(text),
-                            TextFont {
-                                font: fonts.jersey.clone(),
-                                font_size,
-                                font_smoothing: FontSmoothing::None,
-                            },
-                            TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
-                        ));
-                        parent.spawn((
-                            Node {
-                                height: image_size,
-                                aspect_ratio: Some(1.),
-                                ..default()
-                            },
-                            ImageNode {
-                                image: icon,
-                                ..default()
-                            },
-                        ));
-                    }
-                };
-            });
+                ButtonType::LabeledIcon {
+                    text,
+                    icon,
+                    font_size,
+                    image_size,
+                } => {
+                    parent.spawn((
+                        Text::new(text),
+                        TextFont {
+                            font: fonts.jersey.clone(),
+                            font_size,
+                            font_smoothing: FontSmoothing::None,
+                        },
+                        TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                    ));
+                    parent.spawn((
+                        Node {
+                            height: image_size,
+                            aspect_ratio: Some(1.),
+                            ..default()
+                        },
+                        ImageNode {
+                            image: icon,
+                            ..default()
+                        },
+                    ));
+                }
+            };
         });
+    });
 
-    commands
+    entity_cmd
 }
 
 fn toggle_button_skin_states(
@@ -253,9 +259,7 @@ fn toggle_button_skin_states(
                         .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
                 });
             }
-            Interaction::Hovered => {}
-
-            Interaction::None => {
+            Interaction::Hovered | Interaction::None => {
                 children.map(|children| {
                     cmd.entity(children.first().unwrap().clone())
                         .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
@@ -268,9 +272,13 @@ fn toggle_button_skin_states(
 }
 
 fn toggle_button_depress(
-    mut buttons: Query<(&mut DepressButton, &Interaction), (Changed<Interaction>, With<Button>)>,
+    mut cmd: Commands,
+    mut buttons: Query<
+        (Entity, &mut DepressButton, &Interaction),
+        (Changed<Interaction>, With<Button>),
+    >,
 ) {
-    for (mut depress, interaction) in buttons.iter_mut() {
+    for (entity, mut depress, interaction) in buttons.iter_mut() {
         match *interaction {
             Interaction::Pressed => {
                 depress.pressed = true;
@@ -280,6 +288,8 @@ fn toggle_button_depress(
             Interaction::Hovered => {
                 if depress.pressed {
                     depress.invoked = true;
+                    cmd.entity(entity)
+                        .insert(DepressButtonLastInteract(Instant::now()));
                 }
                 depress.pressed = false;
             }

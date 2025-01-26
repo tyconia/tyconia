@@ -142,11 +142,11 @@ pub fn interact_range_slider(
 ) {
     for (slider, depress, dragged) in range_slider.iter() {
         if depress.held() {
-            info!("slider activated");
+            //info!("slider activated");
             cmd.entity(slider).insert(SliderDragged);
         } else {
             dragged.map(|_| {
-                info!("slider de-activated");
+                //info!("slider de-activated");
                 cmd.entity(slider).remove::<SliderDragged>();
             });
         }
@@ -168,7 +168,7 @@ pub fn update_range_slider(
     {
         if slider.iter().count() == 1 {
             let (mut slider, mut node) = slider.single_mut();
-            info!("Cursor is positioned at {}", cursor_world,);
+            //trace!("Cursor is positioned at {}", cursor_world,);
 
             let delta = cursor
                 .read()
