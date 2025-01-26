@@ -32,16 +32,19 @@ impl Plugin for SettingsPlugin {
             .add_systems(
                 Update,
                 (
-                    back_track,
-                    click_setting_tab,
-                    reskin_active_tab.run_if(resource_changed::<State<SettingsTabsState>>),
+                    (
+                        back_track,
+                        click_setting_tab,
+                        reskin_active_tab.run_if(resource_changed::<State<SettingsTabsState>>),
+                    )
+                        .run_if(in_state(MenuNavState::Settings)),
+                    // audio
+                    audio::configure.run_if(any_with_component::<audio::AudioChannelSlider>),
+                    // controls
+                    controls::configure.run_if(any_with_component::<controls::RemapButton>),
                     // ui
-                    interface::ui_scaling.run_if(
-                        in_state(SettingsTabsState::Interface)
-                            .and(any_with_component::<interface::UiScaler>),
-                    ),
-                )
-                    .run_if(in_state(MenuNavState::Settings)),
+                    interface::ui_scaling.run_if(any_with_component::<interface::UiScaler>),
+                ),
             );
     }
 }
@@ -171,6 +174,7 @@ pub(crate) fn setup(
                     Interaction::Hovered,
                     ScrollPosition::DEFAULT,
                     super::Scrollable,
+                    BackgroundColor(Color::srgba_u8(255, 255, 255, 150)),
                 ));
             },
         );

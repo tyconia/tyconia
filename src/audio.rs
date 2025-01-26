@@ -5,17 +5,22 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
 #[derive(Debug, Resource)]
-pub struct MasterVolume(pub f32);
+pub struct MasterAudio;
+
+#[derive(Debug, Resource, Default)]
+pub struct MasterAudioVolume(pub f32);
 
 #[derive(Debug, Resource)]
-pub struct SFXAudioChannel {
-    pub volume: Volume,
-}
+pub struct SFXAudioChannel;
+
+#[derive(Debug, Resource, Default)]
+pub struct SFXAudioChannelVolume(pub Volume);
 
 #[derive(Debug, Resource)]
-pub struct MusicAudioChannel {
-    pub volume: Volume,
-}
+pub struct MusicAudioChannel;
+
+#[derive(Debug, Resource, Default)]
+pub struct MusicAudioChannelVolume(pub Volume);
 
 pub struct InternalAudioPlugin;
 
@@ -23,8 +28,12 @@ pub struct InternalAudioPlugin;
 impl Plugin for InternalAudioPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(AudioPlugin)
+            .add_audio_channel::<MasterAudio>()
+            .init_resource::<MasterAudioVolume>()
             .add_audio_channel::<SFXAudioChannel>()
+            .init_resource::<SFXAudioChannelVolume>()
             .add_audio_channel::<MusicAudioChannel>()
+            .init_resource::<MusicAudioChannelVolume>()
             .add_systems(OnEnter(GameState::Playing), start_audio)
             .add_systems(
                 Update,

@@ -5,8 +5,6 @@ use crate::ui::*;
 
 use bevy::prelude::*;
 
-use crate::actions::*;
-
 pub fn setup(
     mut cmd: Commands,
     backdrop: super::SettingsBackdropQuery,
@@ -218,7 +216,7 @@ fn input_map_entry<A: InputAction>(
                         .with_children(|parent| {
                             spawn_button(
                                 ButtonType::Icon {
-                                    image: ui.undo_ico.clone(),
+                                    image: Some(ui.undo_ico.clone()),
                                     image_size: Val::Px(16.),
                                 },
                                 (RemapButton::default(), Visibility::Hidden),
@@ -267,7 +265,7 @@ fn input_map_entry<A: InputAction>(
                                     },
                                     text: secondary,
                                 },
-                                RemapButton::default(),
+                                (RemapButton, CustomSkinBehavior),
                                 parent,
                                 &fonts,
                                 &ui,
@@ -277,4 +275,16 @@ fn input_map_entry<A: InputAction>(
         });
 }
 
-pub fn configure() {}
+pub fn configure(
+    mut cmd: Commands,
+    remap: Query<(Entity, &DepressButton), (With<RemapButton>, Without<RemapButtonActive>)>,
+    remap_active: Query<(Entity, &DepressButton), With<RemapButtonActive>>,
+) {
+    for (entity, depress) in remap.iter() {
+        if depress.invoked() {
+            cmd.entity(entity).insert(RemapButtonActive {});
+        }
+    }
+
+    if let Ok((entity, depress)) = remap_active.get_single() {}
+}

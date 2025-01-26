@@ -25,7 +25,6 @@ pub struct ActionsPlugin;
 
 impl Plugin for ActionsPlugin {
     fn build(&self, app: &mut App) {
-        
         #[cfg(not(target_arch = "wasm32"))]
         app.add_systems(Startup, (load_input_map,).chain());
 
@@ -63,8 +62,7 @@ fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings:
     let type_registry = type_registry.read();
     let reflect_deserializer = ReflectDeserializer::new(&type_registry);
 
-    let partial_reflect_value =
-        reflect_deserializer.deserialize(&mut deserializer).unwrap();
+    let partial_reflect_value = reflect_deserializer.deserialize(&mut deserializer).unwrap();
 
     *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
 }
@@ -106,8 +104,7 @@ fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings:
     let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
     let reflect_deserializer = ReflectDeserializer::new(&type_registry);
 
-    let partial_reflect_value =
-        reflect_deserializer.deserialize(&mut deserializer).unwrap();
+    let partial_reflect_value = reflect_deserializer.deserialize(&mut deserializer).unwrap();
 
     *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
 }

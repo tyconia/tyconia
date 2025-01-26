@@ -107,10 +107,27 @@ fn setup(
                     //("Load Game", None, Some(MenuNavState::LoadGame)),
                     ("Sandbox", Some(GameState::Playing), None),
                     ("Settings", None, Some(MenuNavState::Settings)),
-
                     #[cfg(not(target_arch = "wasm32"))]
                     ("Quit", Some(GameState::Quit), None),
                 ] {
+                    //let mut button = spawn_button(
+                    //            (*name).into(),
+                    //            (),
+                    //            children,
+                    //            &fonts,
+                    //            &ui,
+                    //        );
+                    //
+                    //match (*game_state, *menu_nav) {
+                    //    (Some(game_state), None) => {
+                    //        button.insert(ChangeStates(game_state));
+                    //    }
+                    //    (None, Some(menu_nav)) => {
+                    //        button.insert(ChangeStates(menu_nav));
+                    //    }
+                    //    _ => {}
+                    //}
+
                     match (*game_state, *menu_nav) {
                         (Some(game_state), None) => {
                             spawn_button(
