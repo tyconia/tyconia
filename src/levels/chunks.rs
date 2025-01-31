@@ -21,7 +21,8 @@ impl Plugin for ChunkPlugin {
 
 fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
-    let counter_handle: Handle<Image> = textures.isometric_countertop.clone();
+    let counter_handle: Handle<Image> = textures.isometric_inserters.clone();
+    let infinite_io: Handle<Image> = textures.infinite_io.clone();
 
     let map_size = TilemapSize {
         x: QUADRANT_SIDE_LENGTH * 2,
@@ -37,26 +38,43 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
     let tilemap_entity = cmd.spawn_empty().id();
     let tilemap_id = TilemapId(tilemap_entity);
 
-    fill_tilemap_rect(
-        TileTextureIndex(0),
-        TilePos { x: 0, y: 0 },
-        filled_sized,
-        tilemap_id,
-        &mut cmd,
-        &mut floor_storage,
-    );
+    //fill_tilemap_rect(
+    //    TileTextureIndex(0),
+    //    TilePos { x: 0, y: 0 },
+    //    filled_sized,
+    //    tilemap_id,
+    //    &mut cmd,
+    //    &mut floor_storage,
+    //);
+    //
+    //fill_tilemap_rect(
+    //    TileTextureIndex(1),
+    //    TilePos {
+    //        x: QUADRANT_SIDE_LENGTH,
+    //        y: QUADRANT_SIDE_LENGTH,
+    //    },
+    //    filled_sized,
+    //    tilemap_id,
+    //    &mut cmd,
+    //    &mut floor_storage,
+    //);
+    //
+    //
+    for x in 0..20 {
+        for y in 0..20 {
+            let tile = cmd.spawn(TileBundle {
+                position: TilePos { x, y },
+                texture_index: TileTextureIndex(match (x % 2, y % 2) {
+                    (0, _) => 1,
+                    _ => 0,
+                }),
+                tilemap_id: TilemapId(tilemap_entity),
+                ..default()
+            }).id();
 
-    fill_tilemap_rect(
-        TileTextureIndex(1),
-        TilePos {
-            x: QUADRANT_SIDE_LENGTH,
-            y: QUADRANT_SIDE_LENGTH,
-        },
-        filled_sized,
-        tilemap_id,
-        &mut cmd,
-        &mut floor_storage,
-    );
+            floor_storage.set(&TilePos {x,y}, tile);
+        }
+    }
 
     let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
     let grid_size = (TilemapTileSize { x: 32.0, y: 16.0 }).into();
@@ -66,7 +84,7 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
         grid_size,
         size: map_size,
         storage: floor_storage.clone(),
-        texture: TilemapTexture::Vector([counter_handle.clone()].into()),
+        texture: TilemapTexture::Vector([counter_handle.clone(), infinite_io.clone()].into()),
         tile_size,
         map_type,
         transform: get_tilemap_center_transform(
@@ -81,6 +99,8 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
         },
         ..Default::default()
     });
+
+
 }
 
 #[derive(Debug, Component)]
