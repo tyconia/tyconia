@@ -275,7 +275,7 @@ pub fn flag_resize_window(
                 depress.held(),
                 already_resizing.is_some(),
             ) {
-               // case 1: flag resize on a held ui window & set cursor
+                // case 1: flag resize on a held ui window & set cursor
                 (Some((resize_source, resize_icon_cursor)), true, false) => {
                     //info!("Resizing {:?}", resize_source);
 
@@ -297,8 +297,6 @@ pub fn flag_resize_window(
                 //(None, false, false) => {
                 //    *current_cursor = None;
                 //}
- 
-
                 _ => {}
             }
         }

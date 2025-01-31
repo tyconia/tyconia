@@ -21,8 +21,9 @@ impl Plugin for ChunkPlugin {
 
 fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
-    let counter_handle: Handle<Image> = textures.isometric_inserters.clone();
+    let inserter: Handle<Image> = textures.isometric_inserters.clone();
     let infinite_io: Handle<Image> = textures.infinite_io.clone();
+    let belts: Handle<Image> = textures.isometric_belts.clone();
 
     let map_size = TilemapSize {
         x: QUADRANT_SIDE_LENGTH * 2,
@@ -62,18 +63,34 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
     //
     for x in 0..20 {
         for y in 0..20 {
-            let tile = cmd.spawn(TileBundle {
+            let tile = cmd
+                .spawn(TileBundle {
+                    position: TilePos { x, y },
+                    texture_index: TileTextureIndex(match (x % 2, y % 2) {
+                        (0, _) => 1,
+                        _ => 0,
+                    }),
+                    tilemap_id: TilemapId(tilemap_entity),
+                    ..default()
+                })
+                .id();
+
+            floor_storage.set(&TilePos { x, y }, tile);
+        }
+    }
+
+    for y in 0..20 {
+        let x = 20;
+        let tile = cmd
+            .spawn(TileBundle {
                 position: TilePos { x, y },
-                texture_index: TileTextureIndex(match (x % 2, y % 2) {
-                    (0, _) => 1,
-                    _ => 0,
-                }),
+                texture_index: TileTextureIndex(2),
                 tilemap_id: TilemapId(tilemap_entity),
                 ..default()
-            }).id();
+            })
+            .id();
 
-            floor_storage.set(&TilePos {x,y}, tile);
-        }
+        floor_storage.set(&TilePos { x, y }, tile);
     }
 
     let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
@@ -84,7 +101,9 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
         grid_size,
         size: map_size,
         storage: floor_storage.clone(),
-        texture: TilemapTexture::Vector([counter_handle.clone(), infinite_io.clone()].into()),
+        texture: TilemapTexture::Vector(
+            [inserter.clone(), infinite_io.clone(), belts.clone()].into(),
+        ),
         tile_size,
         map_type,
         transform: get_tilemap_center_transform(
@@ -99,8 +118,6 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
         },
         ..Default::default()
     });
-
-
 }
 
 #[derive(Debug, Component)]
