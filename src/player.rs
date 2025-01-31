@@ -27,7 +27,7 @@ impl Plugin for PlayerPlugin {
 fn spawn_player(mut commands: Commands, textures: Res<TextureAssets>) {
     commands
         .spawn((
-            Sprite::from_image(textures.infinite_io.clone()),
+            //Sprite::from_image(textures.infinite_io.clone()),
             Transform::from_translation(Vec3::new(0., 0., 999.)),
             StateScoped(GameState::Playing),
             Player,
