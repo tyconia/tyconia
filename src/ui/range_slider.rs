@@ -55,8 +55,8 @@ impl Slider {
     }
 }
 
-pub fn labeled_slider<T: ChildBuild, C: Bundle>(
-    cmd: &mut T,
+pub fn labeled_slider<C: Bundle>(
+    cmd: &mut ChildBuilder,
     name: &str,
     components: C,
     ui: &Res<UiAssets>,
@@ -142,11 +142,11 @@ pub fn interact_range_slider(
 ) {
     for (slider, depress, dragged) in range_slider.iter() {
         if depress.held() {
-            //info!("slider activated");
+            info!("slider activated");
             cmd.entity(slider).insert(SliderDragged);
         } else {
             dragged.map(|_| {
-                //info!("slider de-activated");
+                info!("slider de-activated");
                 cmd.entity(slider).remove::<SliderDragged>();
             });
         }

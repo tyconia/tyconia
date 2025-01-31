@@ -86,6 +86,7 @@ rand = { version = "0.8.3" }
 webbrowser = { version = "1", features = ["hardened"] }
 
 ron = { version = "0.8" }
+toml = { version = "0.8" }
 serde = { version = "*" }
 directories = { version = "5.0.1" }
 

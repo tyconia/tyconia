@@ -48,10 +48,6 @@ impl From<&Res<'_, UiAssets>> for ButtonSkins {
         }
     }
 }
-/// Abstraction of a clicked button
-#[derive(Component, Debug)]
-#[require(Button)]
-pub struct DepressButtonLastInteract(pub Instant);
 
 /// Abstraction of a clicked button
 #[derive(Component, Debug)]
@@ -67,6 +63,10 @@ impl DepressButton {
     }
     pub fn invoked(&self) -> bool {
         self.invoked && !self.pressed
+    }
+
+    pub fn none(&self) -> bool {
+        !self.invoked && !self.pressed
     }
 }
 
@@ -160,12 +160,14 @@ pub fn spawn_button<'a, 'b>(
                 // load default state
                 image: ui.button_alpha.clone(),
                 image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                    border: BorderRect::from([6., 6., 5., 5.]),
+                    //border: BorderRect::from([6., 6., 5., 5.]),
+                    border: BorderRect::from([6., 6., 6., 6.]),
                     center_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
                     sides_scale_mode: SliceScaleMode::Tile { stretch_value: 2.5 },
                     max_corner_scale: 2.5,
                     ..default()
                 }),
+
                 ..Default::default()
             },
             DepressButton::default(),
@@ -179,9 +181,9 @@ pub fn spawn_button<'a, 'b>(
                     parent.spawn((
                         Text::new(text),
                         TextFont {
-                            font: fonts.jersey.clone(),
+                            font: fonts.jersey_25.clone(),
                             font_size,
-                            font_smoothing: FontSmoothing::None,
+                            font_smoothing: FontSmoothing::AntiAliased,
                         },
                         TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
                     ));
@@ -208,9 +210,9 @@ pub fn spawn_button<'a, 'b>(
                     parent.spawn((
                         Text::new(text),
                         TextFont {
-                            font: fonts.jersey.clone(),
+                            font: fonts.jersey_25.clone(),
                             font_size,
-                            font_smoothing: FontSmoothing::None,
+                            font_smoothing: FontSmoothing::AntiAliased,
                         },
                         TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
                     ));
@@ -288,8 +290,6 @@ fn toggle_button_depress(
             Interaction::Hovered => {
                 if depress.pressed {
                     depress.invoked = true;
-                    cmd.entity(entity)
-                        .insert(DepressButtonLastInteract(Instant::now()));
                 }
                 depress.pressed = false;
             }

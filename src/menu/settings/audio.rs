@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy_kira_audio::prelude::*;
 
 /// maximum safe volume in decibel level according to google
-pub const MAX_SAFE_DECIBELS: f32 = 70.;
+pub const MAX_SAFE_DECIBELS: f32 = 40.;
 /// range from dead silence to maximum safe volume
 pub const SILENCE_TO_MAX_SAFE_DECIBELS: std::ops::Range<f32> = (0.)..MAX_SAFE_DECIBELS;
 

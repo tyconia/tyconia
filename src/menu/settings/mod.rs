@@ -1,8 +1,6 @@
 use super::{ChangeStates, MenuNavState};
 use crate::loading::{FontAssets, UiAssets};
-use crate::ui::{
-    spawn_button, spawn_window, ButtonSkins, ButtonType, CustomSkinBehavior, UI_SCALE,
-};
+use crate::ui::*;
 
 mod audio;
 mod controls;
@@ -35,7 +33,7 @@ impl Plugin for SettingsPlugin {
                     (
                         back_track,
                         click_setting_tab,
-                        reskin_active_tab.run_if(resource_changed::<State<SettingsTabsState>>),
+                        reskin_active_tab.run_if(state_changed::<SettingsTabsState>),
                     )
                         .run_if(in_state(MenuNavState::Settings)),
                     // audio
@@ -44,6 +42,17 @@ impl Plugin for SettingsPlugin {
                     controls::configure.run_if(any_with_component::<controls::RemapButton>),
                     // ui
                     interface::ui_scaling.run_if(any_with_component::<interface::UiScaler>),
+                    // developer mode
+                    (
+                        enable_developer_mode.run_if(in_state(crate::DeveloperMode(false))),
+                        custom_mod_icon
+                            .run_if(
+                                state_changed::<SettingsTabsState>
+                                    .or(state_changed::<crate::DeveloperMode>),
+                            )
+                            .after(setup),
+                    )
+                        .run_if(in_state(SettingsTabsState::Mods)),
                 ),
             );
     }
@@ -73,23 +82,24 @@ pub fn back_track(mut menu_nav: ResMut<NextState<MenuNavState>>, key: Res<Button
 pub(crate) fn setup(
     mut cmd: Commands,
     backdrop: super::MenuBackdropQuery,
-
     fonts: Res<FontAssets>,
     ui: Res<UiAssets>,
 ) {
-    cmd.entity(backdrop.single()).with_children(|mut parent| {
+    let mut parent = cmd.entity(backdrop.single());
+
+    parent.with_children(|mut parent| {
         spawn_window(
             &mut parent,
             StateScoped(MenuNavState::Settings),
             ChangeStates(MenuNavState::Root),
             &ui,
             &fonts,
+            WindowMeta::new("Settings".into(), 400., 4. / 3.),
             |parent| {
                 parent
                     .spawn((
                         Node {
                             width: Val::Percent(100.),
-                            //height: Val::Px(UI_SCALE * 5.),
                             padding: UiRect::all(Val::Px(UI_SCALE)),
                             flex_direction: FlexDirection::Column,
                             justify_content: JustifyContent::End,
@@ -172,7 +182,6 @@ pub(crate) fn setup(
                     },
                     BorderRadius::all(Val::Px(2.)),
                     Interaction::Hovered,
-                    ScrollPosition::DEFAULT,
                     super::Scrollable,
                     BackgroundColor(Color::srgba_u8(255, 255, 255, 150)),
                 ));
@@ -182,6 +191,60 @@ pub(crate) fn setup(
 }
 
 use crate::ui::DepressButton;
+
+fn custom_mod_icon(
+    mut cmd: Commands,
+    tabs: Query<(&Children, &ChangeStates<SettingsTabsState>)>,
+    ui: Res<UiAssets>,
+    developer_mode: Res<State<crate::DeveloperMode>>,
+) {
+    for (children, tab) in tabs.iter() {
+        if tab.0 == SettingsTabsState::Mods && developer_mode.get().0 {
+            // second child is the image node of a LabeledIcon
+            let mut mod_icon = cmd.entity(*children.get(1).unwrap());
+            mod_icon.insert(ImageNode {
+                image: ui.magic_axe_real_ico.clone(),
+                ..default()
+            });
+        }
+    }
+}
+
+fn enable_developer_mode(
+    mut last_clicks: Local<usize>,
+    mut developer_mode: ResMut<NextState<crate::DeveloperMode>>,
+    buttons: Query<(&DepressButton, &ChangeStates<SettingsTabsState>), Changed<DepressButton>>,
+
+    mut notifications_channel: crate::ui::NotificationChannel,
+) {
+    for (depress, state) in buttons.iter() {
+        match state.0 {
+            SettingsTabsState::Mods => {
+                if depress.invoked() {
+                    *last_clicks += 1;
+
+                    if *last_clicks > 4 {
+                        info!("Developer mode active");
+                        developer_mode.set(crate::DeveloperMode(true));
+
+                        Notification {
+                            title: "Developer mode active".into(),
+                            level: NotificationLevel::Info,
+                            description: "Editor tools expanded and lua scripting enabled".into(),
+                        }
+                        .queue(None, &mut notifications_channel);
+                    }
+                }
+            }
+            _ => {
+                if depress.invoked() {
+                    *last_clicks = 0;
+                    info!("resetted developer trigger");
+                }
+            }
+        }
+    }
+}
 
 // handle settings interactions
 fn click_setting_tab(

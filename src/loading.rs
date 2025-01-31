@@ -56,6 +56,19 @@ pub struct TextureAssets {
     pub isometric_countertop: Handle<Image>,
     #[asset(path = "textures/isometric_belts.png")]
     pub isometric_belts: Handle<Image>,
+    #[asset(path = "textures/isometric_inserters.png")]
+    pub isometric_inserters: Handle<Image>,
+    #[asset(path = "textures/isometric_table.png")]
+    pub isometric_table: Handle<Image>,
+
+    #[asset(path = "textures/burger.png")]
+    pub burger: Handle<Image>,
+    #[asset(path = "textures/pizza.png")]
+    pub pizza: Handle<Image>,
+    #[asset(path = "textures/fries.png")]
+    pub fries: Handle<Image>,
+    #[asset(path = "textures/choco.png")]
+    pub choco: Handle<Image>,
 }
 
 #[derive(AssetCollection, Resource)]
@@ -122,6 +135,26 @@ pub struct UiAssets {
     pub earth_ico: Handle<Image>,
     #[asset(path = "textures/ui/magic_axe_ico.png")]
     pub magic_axe_ico: Handle<Image>,
+    #[asset(path = "textures/ui/magic_axe_real_ico.png")]
+    pub magic_axe_real_ico: Handle<Image>,
     #[asset(path = "textures/ui/interface_ico.png")]
     pub interface_ico: Handle<Image>,
+
+    // log levels
+    #[asset(path = "textures/ui/log_level_common_ico.png")]
+    pub log_level_common_ico: Handle<Image>,
+    #[asset(path = "textures/ui/log_level_info_ico.png")]
+    pub log_level_info_ico: Handle<Image>,
+    #[asset(path = "textures/ui/log_level_warning_ico.png")]
+    pub log_level_warning_ico: Handle<Image>,
+    #[asset(path = "textures/ui/log_level_error_ico.png")]
+    pub log_level_error_ico: Handle<Image>,
+    #[asset(path = "textures/ui/log_level_critical_ico.png")]
+    pub log_level_critical_ico: Handle<Image>,
+
+    #[asset(path = "textures/ui/inventory_slot.png")]
+    pub inventory_slot: Handle<Image>,
+
+    #[asset(path = "textures/ui/inventory_backdrop.png")]
+    pub inventory_backdrop: Handle<Image>,
 }

@@ -4,19 +4,34 @@ use std::time::Duration;
 
 use crate::loading::*;
 use crate::ui::*;
+use crate::GameState;
 use bevy::prelude::*;
 
 pub struct NotificationPlugin;
 
+pub type NotificationChannel<'a> = EventWriter<'a, NotificationEvent>;
+
 impl Plugin for NotificationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (countdown_notification_timer, interact_notification)
-                .run_if(any_with_component::<Notification>),
-        );
+        app.add_event::<NotificationEvent>()
+            .add_systems(OnExit(GameState::Loading), spawn_notification_backdrop)
+            .add_systems(
+                Update,
+                (
+                    countdown_notification_timer.run_if(any_with_component::<NotificationTimer>),
+                    interact_notification,
+                )
+                    .run_if(any_with_component::<Notification>),
+            )
+            .add_systems(
+                Update,
+                handle_notification.run_if(on_event::<NotificationEvent>),
+            );
     }
 }
+
+#[derive(Debug, Component)]
+pub struct NotificationBackdrop;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum NotificationLevel {
@@ -27,7 +42,14 @@ pub enum NotificationLevel {
     Critical,
 }
 
+#[derive(Debug, Clone, Event)]
+pub struct NotificationEvent {
+    pub notification: Notification,
+    pub timer: Option<Duration>,
+}
+
 #[derive(Debug, Clone, Component)]
+#[require(Interaction)]
 pub struct Notification {
     pub level: NotificationLevel,
     pub title: String,
@@ -42,56 +64,142 @@ pub struct NotificationTimer(pub Timer);
 pub struct NotificationTimerPaused;
 
 impl Notification {
-    pub fn spawn(
+    pub fn queue(
         self,
-        cmd: &mut Commands,
-        duration: Duration,
-        ui: &Res<UiAssets>,
-        fonts: &Res<FontAssets>,
+        duration: Option<Duration>,
+        notification_channel: &mut EventWriter<NotificationEvent>,
     ) {
-        spawn_notification(cmd, self, duration, ui, fonts);
+        queue_notification(self, duration, notification_channel);
     }
 }
 
-pub fn spawn_notification_space() {}
+pub fn queue_notification(
+    notification: Notification,
+    duration: Option<Duration>,
+    notification_channel: &mut EventWriter<NotificationEvent>,
+) {
+    notification_channel.send(NotificationEvent {
+        notification,
+        timer: duration,
+    });
+}
 
+/// receives notification queues and spawns the notifications
+pub fn handle_notification(
+    mut cmd: Commands,
+
+    backdrop: Query<Entity, With<NotificationBackdrop>>,
+    mut notification: EventReader<NotificationEvent>,
+    ui: Res<UiAssets>,
+    fonts: Res<FontAssets>,
+) {
+    for NotificationEvent {
+        notification,
+        timer,
+    } in notification.read()
+    {
+        spawn_notification(
+            &mut cmd,
+            &backdrop,
+            notification.clone(),
+            timer.clone(),
+            &ui,
+            &fonts,
+        );
+    }
+}
+
+pub fn spawn_notification_backdrop(mut cmd: Commands) {
+    cmd.spawn((
+        NotificationBackdrop,
+        ZIndex::from(super::ZIndices::Notification),
+        Node {
+            width: Val::Vw(25.),
+            height: Val::Percent(100.),
+            position_type: PositionType::Absolute,
+            right: Val::Px(UI_SCALE * 1.2),
+            flex_direction: FlexDirection::ColumnReverse,
+            justify_content: JustifyContent::End,
+            row_gap: Val::Px(UI_SCALE * 2.5),
+
+            padding: UiRect::bottom(Val::Px(UI_SCALE * 2.5)),
+            ..default()
+        },
+    ));
+}
+
+// for spawning a notification window
 pub fn spawn_notification(
     cmd: &mut Commands,
+    backdrop: &Query<Entity, With<NotificationBackdrop>>,
+
     notification: Notification,
-    duration: Duration,
+    timer: Option<Duration>,
     ui: &Res<UiAssets>,
     fonts: &Res<FontAssets>,
 ) {
-    cmd.spawn((
-        notification.clone(),
-        NotificationTimer(Timer::new(duration, TimerMode::Once)),
-        Node {
-            min_width: Val::Px(200.),
-            max_width: Val::Px(300.),
-
-            flex_direction: FlexDirection::Column,
-            aspect_ratio: Some(4. / 3.),
-            position_type: PositionType::Absolute,
-            right: Val::Px(20.),
-            bottom: Val::Px(10.),
-            padding: UiRect::axes(Val::Px(UI_SCALE * 2.), Val::Px(UI_SCALE * 4.)),
-            ..default()
-        },
-        ImageNode {
-            image: ui.button_alpha_active.clone(),
-            image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                border: BorderRect::from([5., 5., 4., 4.]),
-                center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                max_corner_scale: 4.,
+    cmd.entity(backdrop.single()).with_children(|parent| {
+        let mut parent_cmd = parent.spawn((
+            notification.clone(),
+            Node {
+                min_width: Val::Px(200.),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                row_gap: Val::Px(UI_SCALE),
+                position_type: PositionType::Relative,
+                padding: UiRect::axes(Val::Px(UI_SCALE * 2.5), Val::Px(UI_SCALE * 1.2)),
                 ..default()
-            }),
-            ..Default::default()
-        },
-    ))
-    .with_children(|parent| {
-        super::section_text(&notification.title, parent, &fonts);
-        super::body_text(&notification.description, parent, &fonts);
+            },
+            ImageNode {
+                image: ui.inventory_slot.clone(),
+                image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
+                    border: BorderRect::from([5., 5., 4., 4.]),
+                    center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+                    max_corner_scale: 1.5,
+                    ..default()
+                }),
+                ..Default::default()
+            },
+        ));
+
+        if let Some(timer) = timer {
+            parent_cmd.insert(NotificationTimer(Timer::new(timer, TimerMode::Once)));
+        }
+
+        parent_cmd.with_children(|parent| {
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                })
+                .with_children(|parent| {
+                    super::body_text(&notification.title, parent, &fonts);
+                    super::section_text(&notification.description, parent, &fonts);
+                });
+        });
+
+        parent_cmd.with_children(|parent| {
+            parent.spawn((
+                Node {
+                    height: Val::Px(UI_SCALE * 4.),
+                    aspect_ratio: Some(1.),
+                    top: Val::Px(UI_SCALE * 0.8),
+                    right: Val::Px(UI_SCALE * 0.8),
+                    ..default()
+                },
+                ImageNode {
+                    image: match notification.level {
+                        NotificationLevel::Common => ui.log_level_common_ico.clone(),
+                        NotificationLevel::Info => ui.log_level_info_ico.clone(),
+                        NotificationLevel::Warning => ui.log_level_warning_ico.clone(),
+                        NotificationLevel::Error => ui.log_level_error_ico.clone(),
+                        NotificationLevel::Critical => ui.log_level_critical_ico.clone(),
+                    },
+                    ..default()
+                },
+            ));
+        });
     });
 }
 
@@ -104,4 +212,13 @@ pub fn countdown_notification_timer(
     }
 }
 
-pub fn interact_notification() {}
+pub fn interact_notification(
+    mut cmd: Commands,
+    notifications: Query<(Entity, &Interaction), (With<Notification>, Changed<Interaction>)>,
+) {
+    for (entity, interaction) in notifications.iter() {
+        if *interaction == Interaction::Pressed {
+            cmd.entity(entity).despawn_recursive();
+        }
+    }
+}

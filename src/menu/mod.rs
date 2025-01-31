@@ -20,28 +20,24 @@ impl Plugin for MenuPlugin {
             .enable_state_scoped_entities::<MenuNavState>()
             .add_systems(
                 OnEnter(GameState::Menu),
-                // backdrop needs to spawn first before we can get to business
-                (spawn_backdrop, spawn_camera),
+                (spawn_camera, spawn_menu_backdrop).chain(),
             )
             .add_systems(OnEnter(MenuNavState::Root), (setup,))
             // handle menu navigation
-            .add_systems(Update, menu_button.run_if(in_state(GameState::Menu)))
+            .add_systems(Update, main_menu_button.run_if(in_state(GameState::Menu)))
             // settings
             .add_plugins((settings::SettingsPlugin,));
     }
 }
 
-fn spawn_backdrop(mut cmd: Commands, textures: Res<TextureAssets>) {
+pub fn spawn_menu_backdrop(mut cmd: Commands, textures: Res<TextureAssets>) {
     cmd.spawn((
         MenuBackdrop,
         StateScoped(GameState::Menu),
+        ZIndex::from(ZIndices::Menu),
         Node {
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            bottom: Val::Px(5.),
-            height: Val::Percent(100.),
-            width: Val::Percent(100.),
+            height: Val::Vh(100.),
+            width: Val::Vw(100.),
             ..default()
         },
         BackgroundColor(Color::WHITE),
@@ -58,7 +54,6 @@ fn spawn_backdrop(mut cmd: Commands, textures: Res<TextureAssets>) {
 }
 
 fn spawn_camera(mut cmd: Commands) {
-    // Camera
     cmd.spawn((
         StateScoped(GameState::Menu),
         Camera2d,
@@ -73,117 +68,107 @@ fn setup(
     ui: Res<UiAssets>,
     backdrop: Query<Entity, With<MenuBackdrop>>,
 ) {
-    cmd.entity(backdrop.single()).with_children(|children| {
-        // Title text
-        children.spawn((
-            ImageNode {
-                image: ui.title.clone(),
-                ..Default::default()
-            },
-            StateScoped(MenuNavState::Root),
-        ));
-
-        // Main menu buttons
-        children
+    cmd.entity(backdrop.single()).with_children(|parent| {
+        parent
             .spawn((
+                StateScoped(MenuNavState::Root),
                 Node {
+                    width: Val::Percent(100.),
+                    height: Val::Percent(100.),
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
-                    height: Val::Auto,
-                    width: Val::Auto,
-                    row_gap: Val::Px(8.),
-                    //padding: UiRect::all(Val::Px(16.)),
                     ..default()
                 },
-                BorderRadius::all(Val::Px(16.)),
-                BackgroundColor(Color::srgba_u8(255, 255, 255, 220)),
-                StateScoped(MenuNavState::Root),
             ))
-            .with_children(|children| {
-                for (name, game_state, menu_nav) in &[
-                    //("Continue", Some(GameState::Playing), None),
-                    //("New Game", None, Some(MenuNavState::NewGame)),
-                    //("Load Game", None, Some(MenuNavState::LoadGame)),
-                    ("Sandbox", Some(GameState::Playing), None),
-                    ("Settings", None, Some(MenuNavState::Settings)),
-                    #[cfg(not(target_arch = "wasm32"))]
-                    ("Quit", Some(GameState::Quit), None),
-                ] {
-                    //let mut button = spawn_button(
-                    //            (*name).into(),
-                    //            (),
-                    //            children,
-                    //            &fonts,
-                    //            &ui,
-                    //        );
-                    //
-                    //match (*game_state, *menu_nav) {
-                    //    (Some(game_state), None) => {
-                    //        button.insert(ChangeStates(game_state));
-                    //    }
-                    //    (None, Some(menu_nav)) => {
-                    //        button.insert(ChangeStates(menu_nav));
-                    //    }
-                    //    _ => {}
-                    //}
-
-                    match (*game_state, *menu_nav) {
-                        (Some(game_state), None) => {
-                            spawn_button(
-                                (*name).into(),
-                                ChangeStates(game_state),
-                                children,
-                                &fonts,
-                                &ui,
-                            );
-                        }
-                        (None, Some(menu_nav)) => {
-                            spawn_button(
-                                (*name).into(),
-                                ChangeStates(menu_nav),
-                                children,
-                                &fonts,
-                                &ui,
-                            );
-                        }
-                        _ => {}
-                    }
-                }
-            });
-
-        let button_skins = ButtonSkins {
-            normal: ui.kofi_donation_link.clone(),
-            active: ui.kofi_donation_link_dark.clone(),
-        };
-
-        // Donation link
-        children
-            .spawn((
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Center,
-                    justify_content: JustifyContent::Center,
-                    position_type: PositionType::Absolute,
-                    right: Val::Px(32.),
-                    bottom: Val::Px(48.),
-                    height: Val::Px(45.),
-                    width: Val::Px(90.),
-                    ..default()
-                },
-                StateScoped(MenuNavState::Root),
-                BackgroundColor(Color::WHITE),
-                ImageNode {
-                    image: ui.kofi_donation_link.clone(),
-                    image_mode: bevy::ui::widget::NodeImageMode::Stretch,
+            .with_children(|parent| {
+                // Title text
+                parent.spawn((ImageNode {
+                    image: ui.title.clone(),
                     ..Default::default()
-                },
-                OpenLink(env!("PROJECT_SUPPORT_LINK")),
-                DepressButton::default(),
-                button_skins,
-            ))
-            .with_children(|children| {
-                children.spawn_empty();
+                },));
+
+                // Main menu buttons
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            height: Val::Auto,
+                            width: Val::Auto,
+                            row_gap: Val::Px(8.),
+                            ..default()
+                        },
+                        BorderRadius::all(Val::Px(16.)),
+                        BackgroundColor(Color::srgba_u8(255, 255, 255, 220)),
+                    ))
+                    .with_children(|children| {
+                        for (name, game_state, menu_nav) in &[
+                            //("Continue", Some(GameState::Playing), None),
+                            //("New Game", None, Some(MenuNavState::NewGame)),
+                            //("Load Game", None, Some(MenuNavState::LoadGame)),
+                            ("Editor", Some(GameState::Playing), None),
+                            ("Settings", None, Some(MenuNavState::Settings)),
+                            #[cfg(not(target_arch = "wasm32"))]
+                            ("Quit", Some(GameState::Quit), None),
+                        ] {
+                            match (*game_state, *menu_nav) {
+                                (Some(game_state), None) => {
+                                    spawn_button(
+                                        (*name).into(),
+                                        ChangeStates(game_state),
+                                        children,
+                                        &fonts,
+                                        &ui,
+                                    );
+                                }
+                                (None, Some(menu_nav)) => {
+                                    spawn_button(
+                                        (*name).into(),
+                                        ChangeStates(menu_nav),
+                                        children,
+                                        &fonts,
+                                        &ui,
+                                    );
+                                }
+                                _ => {}
+                            }
+                        }
+                    });
+
+                let button_skins = ButtonSkins {
+                    normal: ui.kofi_donation_link.clone(),
+                    active: ui.kofi_donation_link_dark.clone(),
+                };
+
+                // Donation link
+                parent
+                    .spawn((
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            justify_content: JustifyContent::Center,
+                            position_type: PositionType::Absolute,
+                            right: Val::Px(32.),
+                            bottom: Val::Px(48.),
+                            height: Val::Px(90.),
+                            width: Val::Px(180.),
+                            ..default()
+                        },
+                        BackgroundColor(Color::WHITE),
+                        ImageNode {
+                            image: ui.kofi_donation_link.clone(),
+                            image_mode: bevy::ui::widget::NodeImageMode::Stretch,
+                            ..Default::default()
+                        },
+                        OpenLink(env!("PROJECT_SUPPORT_LINK")),
+                        DepressButton::default(),
+                        button_skins,
+                    ))
+                    .with_children(|children| {
+                        children.spawn_empty();
+                    });
             });
     });
 }
@@ -205,7 +190,7 @@ pub enum MenuNavState {
     Settings,
 }
 
-fn menu_button(
+fn main_menu_button(
     buttons: Query<
         (
             &DepressButton,
@@ -232,14 +217,8 @@ fn menu_button(
 
             game_state.map(|gs| {
                 next_game_state.set(gs.0);
-
-                Notification {
-                    title: "Changed game_state".into(),
-                    level: NotificationLevel::Info,
-                    description: format!("Switched to new game state {:?}", gs.0),
-                }
-                .spawn(&mut cmd, std::time::Duration::from_secs(5), &ui, &fonts);
             });
+
             menu_nav.map(|mn| next_menu_nav_state.set(mn.0));
         }
     }

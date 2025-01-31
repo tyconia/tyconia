@@ -20,10 +20,7 @@ pub struct ItemMap(HashMap<(ItemId, super::Meta), ItemRuntime>);
 /// Represents an item.
 /// Item unlock/lock depends on available recipes
 #[derive(Component, Debug, PartialEq, Clone, Reflect, Eq, Hash)]
-pub struct ItemId {
-    pub display_name: String,
-    pub snake_name: String,
-}
+pub struct ItemId(pub String);
 
 /// Maximum amount of x item per stack
 #[derive(Component, Debug, PartialEq, Clone, Reflect)]

@@ -9,6 +9,7 @@ mod dropdown;
 mod notification;
 mod prompt;
 mod range_slider;
+mod system_cursor;
 mod tooltip;
 mod window;
 
@@ -18,10 +19,25 @@ pub use dropdown::*;
 pub use notification::*;
 pub use prompt::*;
 pub use range_slider::*;
+pub use system_cursor::*;
 pub use tooltip::*;
 pub use window::*;
 
 use crate::loading::FontAssets;
+
+pub enum ZIndices {
+    Menu = 1,
+    Notification = 2,
+    Window = 3,
+    Prompt = 10,
+    Tooltip = 11,
+}
+
+impl From<ZIndices> for ZIndex {
+    fn from(value: ZIndices) -> Self {
+        Self(value as i32)
+    }
+}
 
 /// default UI_SCALE
 pub const UI_SCALE: f32 = 8.;
@@ -36,6 +52,7 @@ impl Plugin for UiPlugin {
             range_slider::RangeSliderPlugin,
             window::WindowPlugin,
             notification::NotificationPlugin,
+            system_cursor::SystemCursorPlugin,
         ));
     }
 }
@@ -66,49 +83,49 @@ pub fn separator<'a, T: ChildBuild>(cmd: &'a mut T) {
     });
 }
 
-pub fn title_text<'a, T: ChildBuild>(
+pub fn title_text<'a>(
     text: &'a str,
-    cmd: &'a mut T,
+    cmd: &'a mut ChildBuilder,
     fonts: &'a Res<FontAssets>,
-) -> <T as ChildBuild>::SpawnOutput<'a> {
+) -> EntityCommands<'a> {
     cmd.spawn((
         DARK_FONT,
         Text::new(text),
         TextFont {
             font: fonts.jersey_25.clone(),
-            font_smoothing: FontSmoothing::None,
+            font_smoothing: FontSmoothing::AntiAliased,
             font_size: LARGE_FONT,
         },
     ))
 }
 
-pub fn section_text<'a, T: ChildBuild>(
+pub fn section_text<'a>(
     text: &'a str,
-    cmd: &'a mut T,
+    cmd: &'a mut ChildBuilder,
     fonts: &'a Res<FontAssets>,
-) -> <T as ChildBuild>::SpawnOutput<'a> {
+) -> EntityCommands<'a> {
     cmd.spawn((
         GREY_1_FONT,
         Text::new(text),
         TextFont {
             font: fonts.jersey.clone(),
-            font_smoothing: FontSmoothing::None,
+            font_smoothing: FontSmoothing::AntiAliased,
             font_size: SMALL_MEDIUM_FONT,
         },
     ))
 }
 
-pub fn body_text<'a, T: ChildBuild>(
+pub fn body_text<'a>(
     text: &'a str,
-    cmd: &'a mut T,
+    cmd: &'a mut ChildBuilder,
     fonts: &'a Res<FontAssets>,
-) -> <T as ChildBuild>::SpawnOutput<'a> {
+) -> EntityCommands<'a> {
     cmd.spawn((
         DARK_FONT,
         Text::new(text),
         TextFont {
             font: fonts.jersey_25.clone(),
-            font_smoothing: FontSmoothing::None,
+            font_smoothing: FontSmoothing::AntiAliased,
             font_size: SMALL_MEDIUM_FONT,
         },
     ))

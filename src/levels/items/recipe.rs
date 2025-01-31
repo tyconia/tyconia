@@ -6,13 +6,18 @@ use bevy::prelude::*;
 pub struct Recipes(pub Vec<Recipe>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
+pub struct RecipeId(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub struct Recipe {
     // required ingredients for this recipe
-    pub ingredients: Vec<(ItemId, usize)>,
-    // other items produced by this recipe
-    pub by_products: Option<Vec<(ItemId, usize)>>,
-    // number of items produced by this recipe
-    pub output_quantity: usize,
+    pub ingredients: Vec<super::ItemEntry>,
+
+    // items produced by this recipe
+    pub output: Vec<super::ItemEntry>,
 
     pub research_required: Vec<super::ResearchId>,
+
+    /// duration in milliseconds
+    pub duration: u32,
 }
