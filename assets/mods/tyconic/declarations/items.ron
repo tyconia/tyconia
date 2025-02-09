@@ -1,0 +1,12 @@
+{
+    "tyconia::levels::pack::ItemPack": ([
+        ("pizza_slice"),
+        ("hamburger_hand"),
+        ("choco_cup"),
+        ("fries_medium"),
+        ("potato_medium"),
+        ("cheese_wheel"),
+        ("bread_loaf"),
+        ("pork_slab"),
+    ]),
+}

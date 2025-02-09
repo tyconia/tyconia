@@ -1,0 +1,22 @@
+{
+    "tyconia::levels::pack::RecipePack": ([
+        ("presumptive_pizza"),
+        ("folk_pizza"),
+        ("rustic_pizza"),
+        ("standard_pizza"),
+        ("artisanal_pizza"),
+        ("gilded_pizza"),
+        ("presumptive_burger"),
+        ("folk_burger"),
+        ("rustic_burger"),
+        ("standard_burger"),
+        ("artisanal_burger"),
+        ("gilded_burger"),
+        ("presumptive_fries"),
+        ("folk_fries"),
+        ("rustic_fries"),
+        ("standard_fries"),
+        ("artisanal_fries"),
+        ("gilded_fries"),
+    ]),
+}
