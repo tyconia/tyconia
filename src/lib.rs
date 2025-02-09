@@ -1,7 +1,3 @@
-#![allow(clippy::type_complexity)]
-#![feature(trait_upcasting)]
-#![feature(impl_trait_in_bindings)]
-
 pub mod actions;
 mod audio;
 pub mod hud;
