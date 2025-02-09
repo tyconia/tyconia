@@ -9,6 +9,8 @@
             HotbarSlot(4): (primary: [Key(Digit5)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
             HotbarSlot(5): (primary: [Key(Digit6)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
             HotbarSlot(0): (primary: [Key(Digit1)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            InventoryToggle: (primary: [Key(KeyE)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HUDToggle: (primary: [Key(ShiftLeft), Key(KeyE)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
         },
         movement_actions: {
             West: (primary: [Key(KeyA)], secondary: [Key(ArrowLeft)], primary_gamepad: [], secondary_gamepad: []),
