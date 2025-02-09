@@ -1,14 +1,14 @@
 mod chunks;
 mod editor;
-mod items;
 mod logistics;
+mod pack;
 
 use bevy::prelude::*;
 
 pub use chunks::*;
 pub use editor::*;
-pub use items::*;
 pub use logistics::*;
+pub use pack::*;
 
 pub struct LevelsPlugin;
 
@@ -18,7 +18,8 @@ impl Plugin for LevelsPlugin {
             ChunkPlugin,
             TransportPlugin,
             ResearchEditorPlugin,
-            ToolBarPlugin,
+            //ModsMenuPlugin,
+            //ToolBarPlugin,
         ));
     }
 }

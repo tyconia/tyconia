@@ -147,18 +147,13 @@ pub fn spawn_notification(
                 justify_content: JustifyContent::SpaceBetween,
                 row_gap: Val::Px(UI_SCALE),
                 position_type: PositionType::Relative,
-                padding: UiRect::axes(Val::Px(UI_SCALE * 2.5), Val::Px(UI_SCALE * 1.2)),
+                padding: UiRect::axes(Val::Px(UI_SCALE * 2.5), Val::Px(UI_SCALE * 3.)),
+                flex_wrap: FlexWrap::Wrap,
                 ..default()
             },
             ImageNode {
                 image: ui.inventory_slot.clone(),
-                image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                    border: BorderRect::from([5., 5., 4., 4.]),
-                    center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                    max_corner_scale: 1.5,
-                    ..default()
-                }),
+                image_mode: BUTTON_IMG_MODE_SLICED,
                 ..Default::default()
             },
         ));

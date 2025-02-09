@@ -40,9 +40,9 @@ pub enum WindowResizeSource {
     BottomRight,
 }
 
-#[derive(Debug, Component)]
-#[require(ScrollPosition)]
-pub struct Scrollable;
+//#[derive(Debug, Component)]
+//#[require(ScrollPosition)]
+//pub struct Scrollable;
 
 #[derive(Debug, Component)]
 #[require(DepressButton)]
@@ -224,9 +224,10 @@ pub fn flag_resize_window(
         With<WindowUI>,
     >,
 
-    mut current_cursor_channel: CurrentCursorChannel,
+    #[cfg(not(target_arch = "wasm32"))] mut current_cursor_channel: CurrentCursorChannel,
     mut current_cursor: Local<Option<SystemCursorIcon>>,
 ) {
+    #[cfg(not(target_arch = "wasm32"))]
     current_cursor.map(|cursor| {
         current_cursor_channel.send(cursor.into());
     });

@@ -65,6 +65,15 @@ pub fn setup(
 
                 section_text("Interface", parent, &fonts);
                 input_map_entry(UiAction::Menu, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HUDToggle, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(UiAction::HotbarToggle, parent, &fonts, &ui, &input_mappings);
+                input_map_entry(
+                    UiAction::InventoryToggle,
+                    parent,
+                    &fonts,
+                    &ui,
+                    &input_mappings,
+                );
                 input_map_entry(UiAction::Zoom(2), parent, &fonts, &ui, &input_mappings);
                 input_map_entry(
                     UiAction::HotbarSlotNext,

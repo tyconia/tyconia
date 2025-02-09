@@ -15,8 +15,10 @@ pub struct ResearchEditor(pub crate::Meta);
 impl Plugin for ResearchEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            OnEnter(GameState::Playing),
-            spawn_editor_window.after(spawn_hud_backdrop),
+            OnEnter(EnableHUD::ENABLED),
+            spawn_editor_window
+                .after(spawn_hud_backdrop)
+                .run_if(in_state(crate::DeveloperMode(true))),
         );
     }
 }
@@ -27,21 +29,21 @@ pub fn spawn_editor_window(
     fonts: Res<FontAssets>,
     hud_backdrop: HUDBackdropQuery,
 ) {
-    let meta = crate::Meta {
-        mod_name: "tyconic".into(),
-        namespace: crate::Namespace::Vanilla,
-        version: (0, 1, 0).into(),
-    };
+    let pack = crate::levels::pack::base_mod();
+
     cmd.entity(hud_backdrop.single())
         .with_children(|mut parent| {
             spawn_window(
                 &mut parent,
-                ResearchEditor(meta.clone()),
+                ResearchEditor(pack.meta.clone()),
                 (),
                 &ui,
                 &fonts,
                 WindowMeta::new(
-                    format!("research editor `{}_{}`", meta.mod_name, meta.version),
+                    format!(
+                        "research editor `{}_{}`",
+                        pack.meta.mod_name, pack.meta.version
+                    ),
                     400.,
                     9. / 16.,
                 ),

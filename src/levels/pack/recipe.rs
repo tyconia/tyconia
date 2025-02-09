@@ -1,4 +1,3 @@
-use super::ItemId;
 use bevy::prelude::*;
 
 /// Recipes that can be be used to craft this item

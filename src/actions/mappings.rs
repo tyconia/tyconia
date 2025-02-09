@@ -55,17 +55,45 @@ impl InputMappingEntry {
             &MouseScrollEvent,
         ),
     ) -> Option<T> {
-        if self.primary.iter().fold(true, |acc, ctrl| {
-            acc && match ctrl {
-                DesktopControl::Mouse(m) => match m {
-                    Mouse::Button(mb) => mouse_button.just_pressed(*mb),
-                    Mouse::Scroll { y, .. } => *y != 0,
-                },
-                DesktopControl::Key(k) => key_button.just_pressed(*k),
+        if self.primary.len() > 0 {
+            if self.primary.iter().fold(true, |acc, ctrl| {
+                acc && match ctrl {
+                    DesktopControl::Mouse(m) => match m {
+                        Mouse::Button(mb) => mouse_button.just_pressed(*mb),
+                        Mouse::Scroll { y, .. } => *y != 0,
+                    },
+                    DesktopControl::Key(k) => key_button.just_pressed(*k),
+                }
+            }) {
+                return Some(action);
             }
-        }) {
-            return Some(action);
         }
+        if self.secondary.len() > 0 {
+            if self.secondary.iter().fold(true, |acc, ctrl| {
+                acc && match ctrl {
+                    DesktopControl::Mouse(m) => match m {
+                        Mouse::Button(mb) => mouse_button.just_pressed(*mb),
+                        Mouse::Scroll { y, .. } => *y != 0,
+                    },
+                    DesktopControl::Key(k) => key_button.just_pressed(*k),
+                }
+            }) {
+                return Some(action);
+            }
+        }
+        //
+        //if self.secondary.iter().fold(true, |acc, ctrl| {
+        //    acc && match ctrl {
+        //        DesktopControl::Mouse(m) => match m {
+        //            Mouse::Button(mb) => mouse_button.just_pressed(*mb),
+        //            Mouse::Scroll { y, .. } => *y != 0,
+        //        },
+        //        DesktopControl::Key(k) => key_button.just_pressed(*k),
+        //    }
+        //}) {
+        //    return Some(action);
+        //}
+
         None
     }
 

@@ -37,7 +37,65 @@ impl InputAction for InterAction {
 }
 
 pub(crate) fn dispatch_inter_actions(
-    movement_actions_event: EventWriter<InterAction>,
+    mut inter_actions_event: EventWriter<InterAction>,
     input_mappings: Res<InputMappings>,
+    mouse_scroll: MouseScrollEvent,
+    mouse_button: MouseButtonResource,
+    key_button: KeyButtonResource,
 ) {
+    let ctrl_incoming = (&mouse_button, &key_button, &mouse_scroll);
+
+    input_mappings
+        .inter_actions
+        .iter()
+        .for_each(|(actions, entry)| match actions {
+            InterAction::Pipette => {
+                if entry
+                    .just_pressed(InterAction::Pipette, ctrl_incoming)
+                    .is_some()
+                {
+                    inter_actions_event.send(InterAction::Pipette);
+                }
+            }
+            InterAction::Construct => {
+                if entry
+                    .just_pressed(InterAction::Construct, ctrl_incoming)
+                    .is_some()
+                {
+                    inter_actions_event.send(InterAction::Construct);
+                }
+            }
+            InterAction::Deconstruct => {
+                if entry
+                    .just_pressed(InterAction::Deconstruct, ctrl_incoming)
+                    .is_some()
+                {
+                    inter_actions_event.send(InterAction::Deconstruct);
+                }
+            }
+            InterAction::Distribute => {
+                if entry
+                    .just_pressed(InterAction::Distribute, ctrl_incoming)
+                    .is_some()
+                {
+                    inter_actions_event.send(InterAction::Distribute);
+                }
+            }
+            InterAction::CopyConfiguration => {
+                if entry
+                    .just_pressed(InterAction::CopyConfiguration, ctrl_incoming)
+                    .is_some()
+                {
+                    inter_actions_event.send(InterAction::CopyConfiguration);
+                }
+            }
+            InterAction::PasteConfiguration => {
+                if entry
+                    .just_pressed(InterAction::PasteConfiguration, ctrl_incoming)
+                    .is_some()
+                {
+                    inter_actions_event.send(InterAction::PasteConfiguration);
+                }
+            }
+        });
 }

@@ -9,6 +9,7 @@ mod dropdown;
 mod notification;
 mod prompt;
 mod range_slider;
+//mod selection;
 mod system_cursor;
 mod tooltip;
 mod window;
@@ -30,7 +31,8 @@ pub enum ZIndices {
     Notification = 2,
     Window = 3,
     Prompt = 10,
-    Tooltip = 11,
+    Selection = 11,
+    Tooltip = 12,
 }
 
 impl From<ZIndices> for ZIndex {
@@ -52,7 +54,9 @@ impl Plugin for UiPlugin {
             range_slider::RangeSliderPlugin,
             window::WindowPlugin,
             notification::NotificationPlugin,
+            #[cfg(not(target_arch = "wasm32"))]
             system_cursor::SystemCursorPlugin,
+            //selection::SelectionPlugin,
         ));
     }
 }
@@ -66,6 +70,38 @@ pub const SMALL_MEDIUM_FONT: f32 = 22.;
 pub const BUTTON_FONT: f32 = 24.;
 pub const MEDIUM_FONT: f32 = 26.;
 pub const LARGE_FONT: f32 = 36.;
+
+pub const BUTTON_IMG_MODE_SLICED: bevy::ui::widget::NodeImageMode =
+    bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
+        border: BorderRect {
+            left: 7.,
+            right: 7.,
+            top: 7.,
+            bottom: 7.,
+        },
+        center_scale_mode: SliceScaleMode::Tile {
+            stretch_value: 1.75,
+        },
+        sides_scale_mode: SliceScaleMode::Tile {
+            stretch_value: 1.75,
+        },
+        max_corner_scale: 3.,
+    });
+
+pub const NODE_IMG_MODE_SLICED: bevy::ui::widget::NodeImageMode =
+    bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
+        border: BorderRect {
+            left: 5.,
+            right: 5.,
+            top: 4.,
+            bottom: 4.,
+        },
+        center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
+        sides_scale_mode: SliceScaleMode::Tile {
+            stretch_value: 2.75,
+        },
+        max_corner_scale: 3.,
+    });
 
 pub fn build_text<'a, T: ChildBuild, F: FnMut(&'a mut T)>(
     text: &'a str,

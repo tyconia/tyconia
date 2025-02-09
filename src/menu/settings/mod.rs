@@ -21,8 +21,9 @@ pub type SettingsBackdropQuery<'a, 'b> = Query<'a, 'b, Entity, With<SettingsBack
 impl Plugin for SettingsPlugin {
     fn build(&self, app: &mut App) {
         app.add_sub_state::<SettingsTabsState>()
+            .add_state_scoped_event::<SettingsTabsState>(MenuNavState::Settings)
             .enable_state_scoped_entities::<SettingsTabsState>()
-            .add_systems(OnEnter(MenuNavState::Settings), (setup,))
+            .add_systems(OnEnter(MenuNavState::Settings), (setup, set_setting_tab))
             .add_systems(OnEnter(SettingsTabsState::Audio), (audio::setup,))
             .add_systems(OnEnter(SettingsTabsState::Controls), (controls::setup,))
             .add_systems(OnEnter(SettingsTabsState::Interface), (interface::setup,))
@@ -33,7 +34,9 @@ impl Plugin for SettingsPlugin {
                     (
                         back_track,
                         click_setting_tab,
-                        reskin_active_tab.run_if(state_changed::<SettingsTabsState>),
+                        handle_setting_tab,
+                        reskin_hover_tab.run_if(any_with_component::<DepressButton>),
+                        reskin_active_tab.run_if(on_event::<SettingsTabsState>),
                     )
                         .run_if(in_state(MenuNavState::Settings)),
                     // audio
@@ -58,23 +61,23 @@ impl Plugin for SettingsPlugin {
     }
 }
 
-#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash, Copy)]
+#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash, Copy, Event)]
 #[source(MenuNavState = MenuNavState::Settings) ]
 /// Tabs of settings page
 enum SettingsTabsState {
     /// Mod store also set default mod configurations, still can be changed during world creation
     #[default]
-    Mods,
     Graphics,
     Interface,
     Audio,
     Controls,
     Localization,
+    Mods,
 }
 
-pub fn back_track(mut menu_nav: ResMut<NextState<MenuNavState>>, key: Res<ButtonInput<KeyCode>>) {
+pub fn back_track(mut menu_nav_channel: EventWriter<MenuNavState>, key: Res<ButtonInput<KeyCode>>) {
     if key.pressed(KeyCode::Escape) {
-        menu_nav.set(MenuNavState::Root);
+        menu_nav_channel.send(MenuNavState::Root);
     }
 }
 
@@ -115,8 +118,8 @@ pub(crate) fn setup(
                                 flex_direction: FlexDirection::Row,
                                 flex_wrap: FlexWrap::Wrap,
                                 width: Val::Percent(100.),
-                                column_gap: Val::Px(UI_SCALE),
-                                row_gap: Val::Px(UI_SCALE),
+                                //column_gap: Val::Px(UI_SCALE),
+                                //row_gap: Val::Px(UI_SCALE),
                                 ..default()
                             })
                             .with_children(|parent| {
@@ -149,7 +152,7 @@ pub(crate) fn setup(
                                     parent
                                         .spawn(Node {
                                             flex_grow: 1.,
-                                            max_height: Val::Px(UI_SCALE * 5.),
+                                            //max_height: Val::Px(UI_SCALE * 18.),
                                             ..default()
                                         })
                                         .with_children(|parent| {
@@ -248,20 +251,59 @@ fn enable_developer_mode(
 
 // handle settings interactions
 fn click_setting_tab(
-    mut next_tab: ResMut<NextState<SettingsTabsState>>,
+    mut settings_tab_channel: EventWriter<SettingsTabsState>,
     buttons: Query<(&DepressButton, &ChangeStates<SettingsTabsState>), Changed<DepressButton>>,
 ) {
     for (button, tab) in buttons.iter() {
         if button.invoked() {
-            next_tab.set(tab.0);
-            info!("settings tab activated: {:?}", tab.0);
+            settings_tab_channel.send(tab.0);
+        }
+    }
+}
+
+fn set_setting_tab(
+    settings_tab: Res<State<SettingsTabsState>>,
+    mut settings_tab_channel: EventWriter<SettingsTabsState>,
+) {
+    settings_tab_channel.send(**settings_tab);
+}
+
+fn handle_setting_tab(
+    mut settings_tab_channel: EventReader<SettingsTabsState>,
+    mut next_tab: ResMut<NextState<SettingsTabsState>>,
+) {
+    settings_tab_channel.read().for_each(|tab| {
+        info!("settings tab activated: {:?}", tab);
+        next_tab.set(*tab);
+    });
+}
+
+fn reskin_hover_tab(
+    //mut cmd: Commands,
+    mut button: Query<
+        (&mut ImageNode, &ButtonSkins, &Interaction),
+        (With<ChangeStates<SettingsTabsState>>, Changed<Interaction>),
+    >,
+) {
+    for (mut image, skin, interaction) in button.iter_mut() {
+        if image.image != skin.active {
+            match *interaction {
+                Interaction::Hovered => {
+                    image.image = skin.hover.clone();
+                }
+                Interaction::None => {
+                    image.image = skin.normal.clone();
+                }
+                _ => {}
+            }
         }
     }
 }
 
 fn reskin_active_tab(
     mut cmd: Commands,
-    active_tab: Res<State<SettingsTabsState>>,
+    //active_tab: Res<State<SettingsTabsState>>,
+    mut active_tab: EventReader<SettingsTabsState>,
     mut skins: Query<(
         Option<&Children>,
         &mut ImageNode,
@@ -269,24 +311,24 @@ fn reskin_active_tab(
         &ChangeStates<SettingsTabsState>,
     )>,
 ) {
-    let active_tab = active_tab.get();
+    active_tab.read().last().map(|active_tab| {
+        skins
+            .iter_mut()
+            .for_each(|(children, mut current_skin, button_skins, state)| {
+                if state.0 == *active_tab {
+                    current_skin.image = button_skins.active.clone();
+                    children.map(|children| {
+                        cmd.entity(children.first().unwrap().clone())
+                            .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
+                    });
+                } else {
+                    current_skin.image = button_skins.normal.clone();
 
-    skins
-        .iter_mut()
-        .for_each(|(children, mut current_skin, button_skins, state)| {
-            if state.0 == *active_tab {
-                current_skin.image = button_skins.active.clone();
-                children.map(|children| {
-                    cmd.entity(children.first().unwrap().clone())
-                        .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
-                });
-            } else {
-                current_skin.image = button_skins.normal.clone();
-
-                children.map(|children| {
-                    cmd.entity(children.first().unwrap().clone())
-                        .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
-                });
-            }
-        });
+                    children.map(|children| {
+                        cmd.entity(children.first().unwrap().clone())
+                            .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
+                    });
+                }
+            });
+    });
 }

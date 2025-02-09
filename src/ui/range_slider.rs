@@ -103,6 +103,7 @@ pub fn draw_slider<T: ChildBuild, C: Bundle>(
         let button_skins = super::ButtonSkins {
             active: ui.range_slider_thumb_active.clone(),
             normal: ui.range_slider_thumb.clone(),
+            hover: ui.button_alpha_hover.clone(),
         };
 
         parent.spawn((

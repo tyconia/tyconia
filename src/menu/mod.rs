@@ -17,6 +17,11 @@ pub type MenuBackdropQuery<'a, 'b> = Query<'a, 'b, Entity, With<MenuBackdrop>>;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_sub_state::<MenuNavState>()
+            .add_state_scoped_event::<MenuNavState>(GameState::Menu)
+            .add_systems(
+                Update,
+                handle_menu_nav_events.run_if(on_event::<MenuNavState>),
+            )
             .enable_state_scoped_entities::<MenuNavState>()
             .add_systems(
                 OnEnter(GameState::Menu),
@@ -97,11 +102,11 @@ fn setup(
                             justify_content: JustifyContent::Center,
                             height: Val::Auto,
                             width: Val::Auto,
-                            row_gap: Val::Px(8.),
+                            row_gap: Val::Px(0.),
                             ..default()
                         },
-                        BorderRadius::all(Val::Px(16.)),
-                        BackgroundColor(Color::srgba_u8(255, 255, 255, 220)),
+                        //BorderRadius::all(Val::Px(16.)),
+                        BackgroundColor(Color::srgba_u8(255, 255, 255, 20)),
                     ))
                     .with_children(|children| {
                         for (name, game_state, menu_nav) in &[
@@ -139,7 +144,8 @@ fn setup(
 
                 let button_skins = ButtonSkins {
                     normal: ui.kofi_donation_link.clone(),
-                    active: ui.kofi_donation_link_dark.clone(),
+                    hover: ui.kofi_donation_link_dark.clone(),
+                    active: ui.kofi_donation_link_red.clone(),
                 };
 
                 // Donation link
@@ -180,13 +186,13 @@ struct ChangeStates<T: States>(T);
 struct OpenLink(&'static str);
 
 /// Menu page navigation
-#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash, Copy)]
+#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash, Copy, Event)]
 #[source(GameState = GameState::Menu) ]
 pub enum MenuNavState {
     #[default]
     Root,
-    NewGame,
-    LoadGame,
+    //NewGame,
+    //LoadGame,
     Settings,
 }
 
@@ -200,12 +206,8 @@ fn main_menu_button(
         ),
         Changed<DepressButton>,
     >,
-    mut next_game_state: ResMut<NextState<GameState>>,
-    mut next_menu_nav_state: ResMut<NextState<MenuNavState>>,
-
-    mut cmd: Commands,
-    ui: Res<UiAssets>,
-    fonts: Res<FontAssets>,
+    mut game_state_channel: EventWriter<GameState>,
+    mut menu_nav_channel: EventWriter<MenuNavState>,
 ) {
     for (depress, link, game_state, menu_nav) in buttons.iter() {
         if depress.invoked() {
@@ -216,10 +218,21 @@ fn main_menu_button(
             });
 
             game_state.map(|gs| {
-                next_game_state.set(gs.0);
+                game_state_channel.send(gs.0);
             });
 
-            menu_nav.map(|mn| next_menu_nav_state.set(mn.0));
+            menu_nav.map(|mn| {
+                menu_nav_channel.send(mn.0);
+            });
         }
+    }
+}
+
+pub fn handle_menu_nav_events(
+    mut menu_nav_events: EventReader<MenuNavState>,
+    mut next_menu_nav: ResMut<NextState<MenuNavState>>,
+) {
+    for menu_nav in menu_nav_events.read() {
+        next_menu_nav.set(*menu_nav);
     }
 }

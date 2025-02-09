@@ -1,28 +1,6 @@
-use crate::GameState;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
-
-pub struct LoadingPlugin;
-
-/// This plugin loads all assets using [`AssetLoader`] from a third party bevy plugin
-/// Alternatively you can write the logic to load assets yourself
-/// If interested, take a look at <https://bevy-cheatbook.github.io/features/assets.html>
-impl Plugin for LoadingPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_loading_state(
-            LoadingState::new(GameState::Loading)
-                .continue_to_state(GameState::Menu)
-                .load_collection::<FontAssets>()
-                .load_collection::<AudioAssets>()
-                .load_collection::<UiAssets>()
-                .load_collection::<TextureAssets>(),
-        );
-    }
-}
-
-// the following asset collections will be loaded during the State `GameState::Loading`
-// when done loading, they will be inserted as resources (see <https://github.com/NiklasEi/bevy_asset_loader>)
 
 #[derive(AssetCollection, Resource)]
 pub struct AudioAssets {
@@ -76,10 +54,9 @@ pub struct UiAssets {
     #[asset(path = "textures/ui/title.png")]
     pub title: Handle<Image>,
 
-    //#[asset(path = "textures/ui/button_square.png")]
-    //pub button_square: Handle<Image>,
-    //#[asset(path = "textures/ui/button_square_active.png")]
-    //pub button_square_active: Handle<Image>,
+    #[asset(path = "textures/ui/ui_selection.png")]
+    pub selection: Handle<Image>,
+
     #[asset(path = "textures/ui/button.png")]
     pub button: Handle<Image>,
     #[asset(path = "textures/ui/button--active.png")]
@@ -88,12 +65,16 @@ pub struct UiAssets {
     pub kofi_donation_link: Handle<Image>,
     #[asset(path = "textures/ui/support_me_on_kofi_badge_dark.png")]
     pub kofi_donation_link_dark: Handle<Image>,
+    #[asset(path = "textures/ui/support_me_on_kofi_badge_red.png")]
+    pub kofi_donation_link_red: Handle<Image>,
 
     // buttons
     #[asset(path = "textures/ui/button_alpha.png")]
     pub button_alpha: Handle<Image>,
     #[asset(path = "textures/ui/button_alpha__active.png")]
     pub button_alpha_active: Handle<Image>,
+    #[asset(path = "textures/ui/button_alpha__hover.png")]
+    pub button_alpha_hover: Handle<Image>,
 
     // range sliders
     #[asset(path = "textures/ui/range_slider_thumb.png")]
@@ -154,6 +135,10 @@ pub struct UiAssets {
 
     #[asset(path = "textures/ui/inventory_slot.png")]
     pub inventory_slot: Handle<Image>,
+    #[asset(path = "textures/ui/inventory_slot__hover.png")]
+    pub inventory_slot_hover: Handle<Image>,
+    #[asset(path = "textures/ui/inventory_slot__active.png")]
+    pub inventory_slot_active: Handle<Image>,
 
     #[asset(path = "textures/ui/inventory_backdrop.png")]
     pub inventory_backdrop: Handle<Image>,

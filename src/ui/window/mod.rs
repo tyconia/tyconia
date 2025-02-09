@@ -53,6 +53,7 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
     parent
         .spawn((
             window_components,
+            ZIndex::from(ZIndices::Window),
             WindowUI,
             Node {
                 justify_content: JustifyContent::Start,
@@ -67,13 +68,7 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             },
             ImageNode {
                 image: ui.window_content.clone(),
-                image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                    border: BorderRect::from([5., 5., 4., 4.]),
-                    center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                    max_corner_scale: 1.5,
-                    ..default()
-                }),
+                image_mode: NODE_IMG_MODE_SLICED,
                 ..Default::default()
             },
             BackgroundColor(Color::WHITE),
@@ -82,6 +77,7 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             let close_skins = crate::ui::ButtonSkins {
                 normal: ui.close_ico.clone(),
                 active: ui.close_active_ico.clone(),
+                hover: ui.close_ico.clone(),
             };
 
             parent
@@ -100,13 +96,7 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
                     ImageNode {
                         // load default state
                         image: ui.window_bar.clone(),
-                        image_mode: bevy::ui::widget::NodeImageMode::Sliced(TextureSlicer {
-                            border: BorderRect::from([5., 5., 4., 4.]),
-                            center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                            sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.5 },
-                            max_corner_scale: 1.5,
-                            ..default()
-                        }),
+                        image_mode: NODE_IMG_MODE_SLICED,
                         ..Default::default()
                     },
                     //BackgroundColor(Color::srgba_u8(200, 200, 200, 255)),

@@ -1,6 +1,13 @@
 use bevy::prelude::*;
 use std::hash::Hash;
 
+use std::fmt;
+
+impl fmt::Display for Namespace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
 /// The namespace where an item resides on
 #[derive(Component, Debug, Reflect, PartialEq, Eq, Hash, Clone)]
 pub enum Namespace {

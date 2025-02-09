@@ -1,5 +1,6 @@
 use crate::{
     actions::{mappings::InputMappings, *},
+    hud::*,
     GameState,
 };
 use bevy::prelude::*;
@@ -19,6 +20,12 @@ pub enum UiAction {
     Hotbar(usize),
     /// Summon pause menu
     Menu,
+    // Toggle HUD
+    HUDToggle,
+    /// Toggle hotbar
+    HotbarToggle,
+    /// Toggle Inventory
+    InventoryToggle,
 }
 
 impl InputAction for UiAction {
@@ -30,6 +37,9 @@ impl InputAction for UiAction {
             Self::HotbarSlotPrevious => "Previous hotbar slot".into(),
             Self::Hotbar(index) => format!("Switch to hotbar {}", index + 1),
             Self::HotbarSlot(index) => format!("Switch to hotbar slot {}", index + 1),
+            Self::HUDToggle => "Toggle HUD".into(),
+            Self::HotbarToggle => "Toggle hotbar".into(),
+            Self::InventoryToggle => "Toggle inventory".into(),
         }
     }
 
@@ -53,19 +63,38 @@ pub(crate) fn dispatch_ui_actions(
     ui_actions_events: EventWriter<UiAction>,
     input_mappings: Res<InputMappings>,
 
-    mut next_state: ResMut<NextState<GameState>>,
+    mut game_state_channel: EventWriter<GameState>,
+    mut enable_hud_channel: EventWriter<EnableHUD>,
+    mut enable_inventory_channel: EventWriter<EnableInventory>,
     mouse_scroll: MouseScrollEvent,
     mouse_button: MouseButtonResource,
     key_button: KeyButtonResource,
 ) {
     let ctrl_incoming = (&mouse_button, &key_button, &mouse_scroll);
+
     input_mappings
         .ui_actions
         .iter()
         .for_each(|(actions, entry)| match actions {
             UiAction::Menu => {
                 if entry.just_pressed(UiAction::Menu, ctrl_incoming).is_some() {
-                    next_state.set(GameState::Menu);
+                    game_state_channel.send(GameState::Menu);
+                }
+            }
+            UiAction::HUDToggle => {
+                if entry
+                    .just_pressed(UiAction::HUDToggle, ctrl_incoming)
+                    .is_some()
+                {
+                    enable_hud_channel.send(EnableHUD(true));
+                }
+            }
+            UiAction::InventoryToggle => {
+                if entry
+                    .just_pressed(UiAction::InventoryToggle, ctrl_incoming)
+                    .is_some()
+                {
+                    enable_inventory_channel.send(EnableInventory(true));
                 }
             }
             _ => {}

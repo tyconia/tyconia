@@ -8,3 +8,5 @@ mod item_editor;
 pub use item_editor::*;
 mod tool_bar;
 pub use tool_bar::*;
+mod mods;
+pub use mods::*;
