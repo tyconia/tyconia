@@ -20,7 +20,7 @@ impl Plugin for LoadingPlugin {
             //.add_plugins((ProgressPlugin::<GameState>::new()
             //.with_state_transition(GameState::Loading, GameState::Menu),))
             //.add_systems(Update, report_progress.run_if(in_state(GameState::Loading)))
-            .add_plugins((ScriptingPlugin,))
+            //.add_plugins((ScriptingPlugin,))
             .add_loading_state(
                 LoadingState::new(GameState::Loading)
                     .continue_to_state(GameState::Menu)
