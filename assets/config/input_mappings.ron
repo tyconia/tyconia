@@ -1,0 +1,31 @@
+{
+    "tyconia::actions::mappings::InputMappings": (
+        ui_actions: {
+            HotbarSlot(6): (primary: [Key(Digit7)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(3): (primary: [Key(Digit4)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(1): (primary: [Key(Digit2)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(2): (primary: [Key(Digit3)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            Menu: (primary: [Key(Escape)], secondary: [Key(KeyP)], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(4): (primary: [Key(Digit5)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(5): (primary: [Key(Digit6)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HotbarSlot(0): (primary: [Key(Digit1)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            InventoryToggle: (primary: [Key(KeyE)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+            HUDToggle: (primary: [Key(ShiftLeft), Key(KeyE)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+        },
+        movement_actions: {
+            West: (primary: [Key(KeyA)], secondary: [Key(ArrowLeft)], primary_gamepad: [], secondary_gamepad: []),
+            South: (primary: [Key(KeyS)], secondary: [Key(ArrowDown)], primary_gamepad: [], secondary_gamepad: []),
+            North: (primary: [Key(KeyW)], secondary: [Key(ArrowUp)], primary_gamepad: [], secondary_gamepad: []),
+            East: (primary: [Key(KeyD)], secondary: [Key(ArrowRight)], primary_gamepad: [], secondary_gamepad: []),
+        },
+        inter_actions: {
+          Construct: (primary: [Mouse(Button(Left))], secondary: [Key(ControlLeft)], primary_gamepad: [], secondary_gamepad: []),
+          Deconstruct: (primary: [Mouse(Button(Right))], secondary: [Key(ControlRight)], primary_gamepad: [], secondary_gamepad: []),
+          Pipette: (primary: [Key(KeyQ)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+          Distribute: (primary: [Key(KeyZ)], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+          CopyConfiguration: (primary: [Key(ShiftLeft), Mouse(Button(Right))], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+          PasteConfiguration: (primary: [Key(ShiftLeft), Mouse(Button(Left))], secondary: [], primary_gamepad: [], secondary_gamepad: []),
+        },
+        custom_actions: {},
+    ),
+}

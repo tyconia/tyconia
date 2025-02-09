@@ -1,0 +1,9 @@
+{
+    "tyconia::levels::pack::ResearchPack": ([
+        ("Lemon stand I"),
+        ("Lemon stand II"),
+        ("Diner crash I"),
+        ("Diner crash II"),
+        ("Diner crash III"),
+    ]),
+}

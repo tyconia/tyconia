@@ -1,0 +1,30 @@
+{
+    "tyconia::levels::pack::ModPack": (
+        meta: (
+            mod_name: "base",
+            namespace: Vanilla,
+            version: (
+                major: 0,
+                minor: 0,
+                patch: 0,
+                stage: Dev,
+            ),
+        ),
+        descriptor: (
+            display_name: "Tyconia base",
+            thumbnail: None,
+            cover_art: None,
+            descripion: "adds auto arms, mover belts and the infinite io building",
+            dependencies: ([]),
+        ),
+        attributions: (
+            authors: [
+                "qarkdev+gh@gmail.com",
+            ],
+            licenses: [
+                "EULA",
+            ],
+            credits: [],
+        ),
+    ),
+}
