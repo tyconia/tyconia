@@ -1,7 +1,5 @@
 use super::*;
-use crate::hud::*;
 use crate::ui::*;
-use bevy::prelude::*;
 
 pub struct InventoryInteractionPlugin;
 
@@ -26,7 +24,7 @@ impl Plugin for InventoryInteractionPlugin {
 //  b. right click will transfer one item at a time to an empty or a slot that has the same item
 // 2. dragging on a slot and be able to release the mouse on another slot
 fn interact_inventory_local(
-    mut cmd: Commands,
+    cmd: Commands,
     mut inventory_source: Query<
         (&mut Inventory, &mut InventoryActive),
         (With<InventoryUISource>, Without<InventorySlot>),

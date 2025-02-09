@@ -3,7 +3,6 @@ use crate::{
     hud::*,
     GameState,
 };
-use bevy::prelude::*;
 
 #[derive(Event, Reflect, Eq, PartialEq, Hash, Clone, Debug, Copy)]
 /// [`Event`] for changing UI elements

@@ -50,7 +50,7 @@ pub fn interact_button(
     mut cmd: Commands,
     buttons: Query<(Entity, &Interaction), (With<DepressButton>, Changed<Interaction>)>,
     selection: Query<(Entity, Option<&Parent>), (With<CursorSelect>, Without<DepressButton>)>,
-    mut hovered: Local<Option<Entity>>,
+    hovered: Local<Option<Entity>>,
 ) {
     let (selection_entity, selection_parent) = selection.single();
 

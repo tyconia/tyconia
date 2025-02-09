@@ -7,7 +7,6 @@ mod assets;
 mod mods;
 
 pub use assets::*;
-pub use mods::*;
 
 pub struct LoadingPlugin;
 

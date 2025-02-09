@@ -2,7 +2,6 @@ use crate::hud::*;
 use crate::loading;
 use crate::ui;
 use crate::*;
-use bevy::prelude::*;
 
 mod interact;
 mod interact_world;
@@ -204,7 +203,7 @@ pub fn spawn_inventory(
     inventory_source: Query<(&Inventory, &InventoryUISource, Option<&InventoryActive>)>,
     ui: Res<loading::UiAssets>,
     //textures: Res<loading::TextureAssets>,
-    mut inventory_ui_active: Local<Option<Entity>>,
+    inventory_ui_active: Local<Option<Entity>>,
 ) {
     let (inventory_source, inventory_display, inventory_active) = inventory_source.single();
 
@@ -258,7 +257,7 @@ pub fn spawn_inventory(
                                                     active.0.map_or(false, |active| active == index)
                                                 });
 
-                                            let mut entity_cmd = parent.spawn((
+                                            let entity_cmd = parent.spawn((
                                                 ui::DepressButton::default(),
                                                 ui::ButtonSkins {
                                                     hover: ui.inventory_slot_hover.clone(),

@@ -1,5 +1,4 @@
 use crate::actions::*;
-use bevy::prelude::*;
 
 #[derive(Event, Reflect, Eq, PartialEq, Hash, Clone, Debug, Copy)]
 /// [`Event`] for player interactions with game world entities

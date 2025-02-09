@@ -34,8 +34,8 @@ fn inventory_interact_world(
                     building_tilemap.cursor_tile_position(&*cursor);
                 let (inventory, inventory_active) = inventory.single_mut();
 
-                inventory_active.0.map(|mut active| {
-                    inventory.0.get(active).map(|mut inventory_slot| {
+                inventory_active.0.map(|active| {
+                    inventory.0.get(active).map(|inventory_slot| {
                         //
                         if let &Some(ItemEntry { item, quantity }) = &inventory_slot {
                             if let Some(tile_pos) = tile_pos {

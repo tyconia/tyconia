@@ -71,7 +71,7 @@ pub fn spawn_mods_window(
                 &ui,
                 &fonts,
                 WindowMeta::new("mod menu".into(), 400., 9. / 16.),
-                |mut parent| {
+                |parent| {
                     parent
                         .spawn((
                             Node {

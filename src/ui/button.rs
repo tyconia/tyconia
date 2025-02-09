@@ -4,7 +4,6 @@ use super::UI_SCALE;
 use crate::loading::{FontAssets, UiAssets};
 use bevy::prelude::*;
 use bevy::text::FontSmoothing;
-use std::time::Instant;
 
 pub struct ButtonPlugin;
 
@@ -279,7 +278,7 @@ fn toggle_button_skin_states(
 }
 
 fn toggle_button_depress(
-    mut cmd: Commands,
+    cmd: Commands,
     mut buttons: Query<
         (Entity, &mut DepressButton, &Interaction),
         (Changed<Interaction>, With<Button>),

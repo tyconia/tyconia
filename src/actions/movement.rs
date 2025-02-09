@@ -1,5 +1,4 @@
 use crate::actions::*;
-use bevy::prelude::*;
 
 /// [`Resource`] for enabling movement vector adjusted for isometric movement during adjacent directions.
 /// [`true`] by default

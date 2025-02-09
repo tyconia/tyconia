@@ -4,7 +4,6 @@
 use crate::hud::*;
 use crate::loading::*;
 use crate::ui::*;
-use crate::GameState;
 use bevy::prelude::*;
 
 pub struct ResearchEditorPlugin;

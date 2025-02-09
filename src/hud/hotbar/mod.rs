@@ -1,5 +1,4 @@
 use crate::hud::EnableHUD;
-use crate::GameState;
 use crate::*;
 use bevy::prelude::*;
 
@@ -131,7 +130,7 @@ pub fn spawn_hotbar(
             ))
             .with_children(|parent| {
                 for i in 0..9 {
-                    let mut entity_cmd = parent.spawn((
+                    let entity_cmd = parent.spawn((
                         ui::DepressButton::default(),
                         ui::ButtonSkins {
                             active: ui.inventory_slot_active.clone(),
