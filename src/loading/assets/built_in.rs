@@ -81,6 +81,8 @@ pub struct UiAssets {
     pub range_slider_thumb: Handle<Image>,
     #[asset(path = "textures/ui/range_slider_thumb_active.png")]
     pub range_slider_thumb_active: Handle<Image>,
+    #[asset(path = "textures/ui/range_slider_thumb_hover.png")]
+    pub range_slider_thumb_hover: Handle<Image>,
     #[asset(path = "textures/ui/range_slider_track.png")]
     pub range_slider_track: Handle<Image>,
 

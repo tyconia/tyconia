@@ -120,13 +120,6 @@ pub fn draw_slider<T: ChildBuild, C: Bundle>(
             slider,
             ImageNode {
                 image: button_skins.normal.clone(),
-                //image_mode: NodeImageMode::Sliced(TextureSlicer {
-                //    border: BorderRect::from([3., 3., 1., 0.]),
-                //    center_scale_mode: SliceScaleMode::Tile { stretch_value: 4. },
-                //    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 4. },
-                //
-                //    max_corner_scale: 4.0,
-                //}),
                 image_mode: BUTTON_IMG_MODE_SLICED,
                 ..default()
             },
