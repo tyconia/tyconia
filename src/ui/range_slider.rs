@@ -2,6 +2,7 @@ use crate::loading::*;
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 use std::ops::Range;
+use crate::ui::*;
 
 pub struct RangeSliderPlugin;
 
@@ -103,29 +104,30 @@ pub fn draw_slider<T: ChildBuild, C: Bundle>(
         let button_skins = super::ButtonSkins {
             active: ui.range_slider_thumb_active.clone(),
             normal: ui.range_slider_thumb.clone(),
-            hover: ui.button_alpha_hover.clone(),
+            hover: ui.range_slider_thumb_hover.clone(),
         };
 
         parent.spawn((
             super::DepressButton::default(),
             Node {
-                height: Val::Px(20.),
-                aspect_ratio: Some(16. / 9.),
+                height: Val::Px(40.),
+                aspect_ratio: Some(4. / 3.),
                 position_type: PositionType::Absolute,
                 left: Val::Percent(slider.percentage / 100. * 90.),
-                top: Val::Percent(-100.0), // Position top edge at 50% of parent height
+                top: Val::Percent(-200.0), // Position top edge at 50% of parent height
                 ..default()
             },
             slider,
             ImageNode {
                 image: button_skins.normal.clone(),
-                image_mode: NodeImageMode::Sliced(TextureSlicer {
-                    border: BorderRect::from([3., 3., 1., 0.]),
-                    center_scale_mode: SliceScaleMode::Tile { stretch_value: 4. },
-                    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 4. },
-
-                    max_corner_scale: 4.0,
-                }),
+                //image_mode: NodeImageMode::Sliced(TextureSlicer {
+                //    border: BorderRect::from([3., 3., 1., 0.]),
+                //    center_scale_mode: SliceScaleMode::Tile { stretch_value: 4. },
+                //    sides_scale_mode: SliceScaleMode::Tile { stretch_value: 4. },
+                //
+                //    max_corner_scale: 4.0,
+                //}),
+                image_mode: BUTTON_IMG_MODE_SLICED,
                 ..default()
             },
             button_skins,
