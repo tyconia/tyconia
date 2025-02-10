@@ -1,8 +1,8 @@
 use crate::loading::*;
+use crate::ui::*;
 use bevy::prelude::*;
 use bevy::ui::widget::NodeImageMode;
 use std::ops::Range;
-use crate::ui::*;
 
 pub struct RangeSliderPlugin;
 
