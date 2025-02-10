@@ -7,6 +7,11 @@ mod menu;
 mod player;
 pub mod ui;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod mods;
+#[cfg(not(target_arch = "wasm32"))]
+pub use mods::*;
+
 use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
 use crate::loading::LoadingPlugin;
@@ -71,6 +76,9 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_plugins((ScriptingPlugin,));
+
         app.init_state::<GameState>()
             .init_state::<DeveloperMode>()
             .add_event::<GameState>()
