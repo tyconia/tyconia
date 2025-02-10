@@ -4,7 +4,6 @@ use bevy_asset_loader::prelude::*;
 //use iyes_progress::prelude::*;
 
 mod assets;
-mod mods;
 
 pub use assets::*;
 
@@ -15,19 +14,14 @@ pub struct LoadingPlugin;
 /// If interested, take a look at <https://bevy-cheatbook.github.io/features/assets.html>
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
-        app
-            //.add_plugins((ProgressPlugin::<GameState>::new()
-            //.with_state_transition(GameState::Loading, GameState::Menu),))
-            //.add_systems(Update, report_progress.run_if(in_state(GameState::Loading)))
-            //.add_plugins((ScriptingPlugin,))
-            .add_loading_state(
-                LoadingState::new(GameState::Loading)
-                    .continue_to_state(GameState::Menu)
-                    .load_collection::<FontAssets>()
-                    .load_collection::<AudioAssets>()
-                    .load_collection::<UiAssets>()
-                    .load_collection::<TextureAssets>(),
-            );
+        app.add_loading_state(
+            LoadingState::new(GameState::Loading)
+                .continue_to_state(GameState::Menu)
+                .load_collection::<FontAssets>()
+                .load_collection::<AudioAssets>()
+                .load_collection::<UiAssets>()
+                .load_collection::<TextureAssets>(),
+        );
     }
 }
 
