@@ -42,13 +42,17 @@ dev = [
     "bevy/dynamic_linking",
 ]
 
+# mods scripting currently not working with wasm - see makspll/bevy_mod_scripting#260
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+bevy_mod_scripting = { version = "0.9.3", default-features = false ,features = ["rhai", "bevy_bindings", "core_functions"] }
+
 # All of Bevy's default features exept for the audio related ones (bevy_audio, vorbis), since they clash with bevy_kira_audio
 #   and android_shared_stdcxx/android-game-activity, since those are covered in `mobile`
 [dependencies]
 bevy = { version = "0.15.0", default-features = false, features = [
-    # "file_watcher",
+    "file_watcher",
     "animation",
-    # "bevy_asset",
+    "bevy_asset",
     "bevy_color",
     "bevy_core_pipeline",
     "bevy_gilrs",
@@ -82,7 +86,6 @@ bevy = { version = "0.15.0", default-features = false, features = [
 bevy_kira_audio = { version = "0.21" }
 bevy_asset_loader = { version = "0.22" }
 bevy_ecs_tilemap = { version = "0.15" }
-# bevy_mod_scripting = { version = "0.9.0", features = ["rhai"] }
 # iyes_progress = { version = "0.13.1" }
 rand = { version = "0.8.3" }
 webbrowser = { version = "1", features = ["hardened"] }
