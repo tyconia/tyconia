@@ -37,7 +37,7 @@ impl Default for DeveloperMode {
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
 // Or https://github.com/bevyengine/bevy/blob/main/examples/ecs/state.rs
-#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash, Copy, Event)]
+#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash, Copy, Event, Reflect)]
 pub enum GameState {
     /// Initial asset loading
     #[default]

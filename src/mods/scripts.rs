@@ -5,6 +5,7 @@ use bevy_mod_scripting::core::{
     asset::{ScriptAsset, ScriptAssetLoader},
     bindings::{function::namespace::*, AppReflectAllocator, ReflectReference},
     callback_labels,
+    event::IntoCallbackLabel,
     event::ScriptCallbackEvent,
     handler::event_handler,
     script::ScriptComponent,
@@ -22,12 +23,13 @@ impl Plugin for ScriptingPlugin {
             .init_resource::<AppReflectAllocator>()
             .register_type::<Base>()
             .add_systems(Startup, (assign_base_fn,))
-            .add_systems(OnEnter(GameState::Playing), (load_scripts,).chain())
+            .add_systems(Startup, (load_scripts,).chain())
             .register_type::<PlayerMovement>()
             .add_systems(
                 Update,
                 (
-                    send_event_::<PlayerMovement>,
+                    //send_event_::<PlayerMovement>,
+                    trigger_callback::<PlayerMovement, OnEvent>,
                     event_handler::<OnEvent, RhaiScriptingPlugin>,
                 )
                     .chain()
@@ -60,7 +62,15 @@ pub struct PlayerMovement {
 }
 
 // define the label, you can define as many as you like here
-callback_labels!(OnEvent => "on_event");
+callback_labels!(
+    OnEvent => "on_event"
+);
+
+impl Default for OnEvent {
+    fn default() -> Self {
+        Self
+    }
+}
 
 // trigger the event
 fn send_event(
@@ -73,6 +83,42 @@ fn send_event(
     writer.send(ScriptCallbackEvent::new_for_all(
         OnEvent,
         vec![my_reflect_payload.into()],
+    ));
+}
+
+pub fn trigger_callback<T: Reflect + Default, E: IntoCallbackLabel + Default>(
+    mut writer: EventWriter<ScriptCallbackEvent>,
+    allocator: ResMut<AppReflectAllocator>,
+    type_registry: Res<AppTypeRegistry>,
+
+    mut notification_channel: EventWriter<NotificationEvent>,
+) {
+    let registry = type_registry.read();
+
+    if !registry.contains(std::any::TypeId::of::<T>()) {
+        error!(
+            "Attempted to send event with unregistered type: {}",
+            std::any::type_name::<T>()
+        );
+
+        Notification {
+            level: NotificationLevel::Error,
+            title: "Unregistered type failure".into(),
+            description: format!(
+                "Attempted to send event with unregistered type: {}",
+                std::any::type_name::<T>()
+            ),
+        }
+        .queue(None, &mut notification_channel);
+    }
+    //assert!(registry.contains(std::any::TypeId::of::<T>()));
+
+    let mut allocator = allocator.write();
+    let reflect_payload = ReflectReference::new_allocated(T::default(), &mut allocator); // Ensure T: Default if needed
+
+    writer.send(ScriptCallbackEvent::new_for_all(
+        E::default(),
+        vec![reflect_payload.into()],
     ));
 }
 
@@ -116,26 +162,25 @@ fn send_event_<T: Reflect + Default>(
 pub struct Base;
 
 fn assign_base_fn(mut world: &mut World) {
-    //NamespaceBuilder::<Base>::new(&mut world).register("hello_world", |s: String| {
-    //    println!("{}", s);
-    //});
+    NamespaceBuilder::<Base>::new(&mut world).register("hello_world", |s: String| {
+        println!("welcome to the world, {}", s);
+    });
 
-
-let mut builder = NamespaceBuilder::<GlobalNamespace>::new_unregistered(world);
+    let mut builder = NamespaceBuilder::<Base>::new(world);
     builder
         .register("log_info", |text: String| {
-            info!("Lua: {}", text);
+            info!("{}", text);
         })
         .register("log_warning", |text: String| {
-            info!("Lua: {}", text);
+            info!("{}", text);
         })
         .register("log_error", |text: String| {
-            error!("Lua: {}", text);
+            error!("{}", text);
         })
         .register("log", |text: String| {
-            debug!("Lua: {}", text);
+            debug!("{}", text);
         })
         .register("log_debug", |text: String| {
-            debug!("Lua: {}", text);
+            debug!("{}", text);
         });
 }

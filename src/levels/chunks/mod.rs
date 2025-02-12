@@ -5,6 +5,9 @@ use crate::GameState;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
+mod surfaces;
+pub use surfaces::*;
+
 pub struct ChunkPlugin;
 
 impl ChunkPlugin {
@@ -14,10 +17,11 @@ impl ChunkPlugin {
 
 impl Plugin for ChunkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(TilemapPlugin).add_systems(
-            OnEnter(GameState::Playing),
-            (render_floors, render_countertops).chain(),
-        );
+        app.add_plugins((TilemapPlugin, SurfacesPlugin))
+            .add_systems(
+                OnEnter(GameState::Playing),
+                (render_floors, render_countertops).chain(),
+            );
     }
 }
 
