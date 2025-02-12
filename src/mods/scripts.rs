@@ -2,7 +2,7 @@ use crate::ui::*;
 use crate::GameState;
 use bevy::prelude::*;
 use bevy_mod_scripting::core::{
-    asset::{ScriptAsset, ScriptAssetLoader},
+    asset::ScriptAsset,
     bindings::{function::namespace::*, AppReflectAllocator, ReflectReference},
     callback_labels,
     event::IntoCallbackLabel,
@@ -10,7 +10,6 @@ use bevy_mod_scripting::core::{
     handler::event_handler,
     script::ScriptComponent,
 };
-use bevy_mod_scripting::rhai::RhaiRuntime;
 use bevy_mod_scripting::rhai::RhaiScriptingPlugin;
 use bevy_mod_scripting::ScriptFunctionsPlugin;
 

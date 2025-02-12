@@ -3,9 +3,7 @@
 //! building
 
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use bevy_ecs_tilemap::prelude::*;
-use std::borrow::Cow;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::scripts::callbacks;
@@ -88,7 +86,7 @@ pub mod scripts {
     }
 
     pub mod api {
-        use crate::GameState;
+
         use crate::SurfaceState;
         use bevy::prelude::*;
         use bevy_mod_scripting::core::{
@@ -134,7 +132,7 @@ pub mod scripts {
     }
 
     pub mod callbacks {
-        use bevy::prelude::*;
+
         use bevy_mod_scripting::core::callback_labels;
 
         callback_labels!(
