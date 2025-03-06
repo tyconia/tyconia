@@ -51,14 +51,12 @@ pub fn spawn_mods_window(
     // describes features that comes with the binary like belts, inserters
     let base_mod = crate::Meta {
         mod_name: "base".into(),
-        namespace: crate::Namespace::Vanilla,
         version: (0, 0, 0).into(),
     };
 
     // describes features that comes with the binary like belts, inserters
     let tyconic_mod = crate::Meta {
         mod_name: "tyconic".into(),
-        namespace: crate::Namespace::Vanilla,
         version: (0, 0, 0).into(),
     };
 

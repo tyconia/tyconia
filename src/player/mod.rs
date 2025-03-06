@@ -1,6 +1,7 @@
 use crate::actions::{cursors::CursorWorldPosition, movement::MovementAction, ui::UiAction};
 use crate::levels::*;
 use crate::loading::TextureAssets;
+use crate::ui::*;
 use crate::GameState;
 use bevy::prelude::*;
 
@@ -17,9 +18,9 @@ impl Plugin for PlayerPlugin {
                 (
                     move_player.run_if(on_event::<MovementAction>),
                     zoom_camera,
-                    (un_highlight, (hightlight_building, highlight_tile))
-                        .chain()
-                        .run_if(resource_changed::<CursorWorldPosition>),
+                    //(un_highlight, (hightlight_building /* highlight_tile */,))
+                    //    .chain()
+                    //    .run_if(resource_changed::<CursorWorldPosition>),
                 )
                     .run_if(in_state(GameState::Playing)),
             );
@@ -31,19 +32,19 @@ fn spawn_player(mut commands: Commands, textures: Res<TextureAssets>) {
 
     inventory.dump(vec![
         ItemEntry {
-            item: ItemId("auto_arm".into()),
+            item: "auto_arm".into(),
             quantity: 20,
         },
         ItemEntry {
-            item: ItemId("auto_arm".into()),
+            item: "auto_arm".into(),
             quantity: 20,
         },
         ItemEntry {
-            item: ItemId("mover_belt".into()),
+            item: "mover_belt".into(),
             quantity: 80,
         },
         ItemEntry {
-            item: ItemId("infinite_io".into()),
+            item: "infinite_io".into(),
             quantity: 20,
         },
     ]);
@@ -131,6 +132,20 @@ fn un_highlight(mut cmd: Commands, mut highlighted_tiles: HighlightedtilesQuery)
     }
 }
 
+pub const HIGHLIGHT_CLR: Color = Color::srgba(
+    168.0 / 255.0, // red: ~0.6588235
+    255.0 / 255.0, // green: 1.0
+    229.0 / 255.0, // blue: ~0.8980392
+    250.0 / 255.0, // alpha: ~0.3921569
+);
+
+pub const NEGATIVE_HIGHLIGHT_CLR: Color = Color::srgba(
+    255.0 / 255.0, // red: 1.0
+    168.0 / 255.0, // green: ~0.6588235
+    229.0 / 255.0, // blue: ~0.8980392
+    240.0 / 255.0, // alpha: ~0.3921569
+);
+
 fn hightlight_building(
     mut cmd: Commands,
     cursor_world_position: Res<CursorWorldPosition>,
@@ -149,7 +164,7 @@ fn hightlight_building(
         tile_storage.get(&tile_pos).map(|tile_entity| {
             cmd.entity(tile_entity)
                 .insert(HighlightedTile)
-                .insert(TileColor(Color::srgb(0.6, 0.9, 0.6)));
+                .insert(TileColor(HIGHLIGHT_CLR));
         });
     });
 }
@@ -167,6 +182,7 @@ fn highlight_tile(
     let occupied_tile = {
         let (_, map_size, grid_size, map_type, tile_storage, map_transform) =
             building_tilemap.single();
+
         cursor_tile_position(
             &*cursor_world_position,
             &*map_size,
@@ -193,7 +209,7 @@ fn highlight_tile(
         tile_storage.get(&tile_pos).map(|tile_entity| {
             cmd.entity(tile_entity)
                 .insert(HighlightedTile)
-                .insert(TileColor(Color::srgb(0.6, 0.9, 0.6)));
+                .insert(TileColor(HIGHLIGHT_CLR));
         });
     });
 }

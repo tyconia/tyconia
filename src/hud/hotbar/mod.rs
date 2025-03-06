@@ -3,7 +3,6 @@ use crate::*;
 use bevy::prelude::*;
 
 mod context_menu;
-mod selection;
 
 pub struct HotbarPlugin;
 
@@ -19,7 +18,6 @@ impl Plugin for HotbarPlugin {
             Update,
             (interact_hotbar_slot,).run_if(any_with_component::<HotbarSlot>),
         );
-        //.add_plugins(selection::CursorSelectPlugin);
     }
 }
 
@@ -27,8 +25,19 @@ impl Plugin for HotbarPlugin {
 #[require(ui::DepressButton)]
 pub struct HotbarSlot(pub Option<ItemEntry>);
 
-#[derive(Debug, Component, Default)]
-pub struct HotbarslotLocked;
+#[derive(Debug, Component, Default, Clone)]
+#[require(ui::DepressButton)]
+pub struct Hotbarslot {
+    pub entry: Option<ItemId>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub enum HotbarSlotStatus {
+    Disabled,
+    Locked,
+    #[default]
+    Working,
+}
 
 pub fn populate_hotbar_slots(
     mut cmd: Commands,
@@ -47,51 +56,51 @@ pub fn populate_hotbar_slots(
                 ..default()
             },));
 
-            if let Some(quantity) = slot
-                .0
-                .as_ref()
-                .and_then(|item_entry| match item_entry.item.0.as_str() {
-                    "inserter" => Some((item_entry.quantity, textures.isometric_inserters.clone())),
-                    "belt" => Some((item_entry.quantity, textures.isometric_belts.clone())),
-                    "infinite_io" => Some((item_entry.quantity, textures.infinite_io.clone())),
-                    "table" => Some((item_entry.quantity, textures.isometric_table.clone())),
-                    _ => None,
-                })
-                .and_then(|(quantity, image)| {
-                    spawn_child.insert(ImageNode {
-                        image,
-                        color: if quantity < 1 {
-                            Color::srgba_u8(255, 255, 255, 100)
-                        } else {
-                            Default::default()
-                        },
-                        ..default()
-                    });
-
-                    Some(quantity)
-                })
-            {
-                parent.spawn((
-                    if quantity > 0 {
-                        Visibility::Visible
-                    } else {
-                        Visibility::Hidden
-                    },
-                    Node {
-                        position_type: PositionType::Absolute,
-                        top: Val::Px(0.),
-                        left: Val::Px(ui::UI_SCALE * 0.75),
-                        ..default()
-                    },
-                    Text::new(format!("{}", quantity)),
-                    TextColor::BLACK,
-                    TextFont {
-                        font: fonts.jersey.clone(),
-                        font_size: ui::UI_SCALE * 2.,
-                        font_smoothing: bevy::text::FontSmoothing::AntiAliased,
-                    },
-                ));
-            }
+            //if let Some(quantity) = slot
+            //    .0
+            //    .as_ref()
+            //    .and_then(|item_entry| match item_entry.item.ident.as_str() {
+            //        "inserter" => Some((item_entry.quantity, textures.isometric_inserters.clone())),
+            //        "belt" => Some((item_entry.quantity, textures.isometric_belts.clone())),
+            //        "infinite_io" => Some((item_entry.quantity, textures.infinite_io.clone())),
+            //        "table" => Some((item_entry.quantity, textures.isometric_table.clone())),
+            //        _ => None,
+            //    })
+            //    .and_then(|(quantity, image)| {
+            //        spawn_child.insert(ImageNode {
+            //            image,
+            //            color: if quantity < 1 {
+            //                Color::srgba_u8(255, 255, 255, 100)
+            //            } else {
+            //                Default::default()
+            //            },
+            //            ..default()
+            //        });
+            //
+            //        Some(quantity)
+            //    })
+            //{
+            //    parent.spawn((
+            //        if quantity > 0 {
+            //            Visibility::Visible
+            //        } else {
+            //            Visibility::Hidden
+            //        },
+            //        Node {
+            //            position_type: PositionType::Absolute,
+            //            top: Val::Px(0.),
+            //            left: Val::Px(ui::UI_SCALE * 0.75),
+            //            ..default()
+            //        },
+            //        Text::new(format!("{}", quantity)),
+            //        TextColor::BLACK,
+            //        TextFont {
+            //            font: fonts.jersey.clone(),
+            //            font_size: ui::UI_SCALE * 2.,
+            //            font_smoothing: bevy::text::FontSmoothing::AntiAliased,
+            //        },
+            //    ));
+            //}
         });
     });
 }
@@ -154,16 +163,15 @@ pub fn spawn_hotbar(
                             ..Default::default()
                         },
                         HotbarSlot(Some(ItemEntry {
-                            item: ItemId(
-                                match i {
-                                    0 => "inserter",
-                                    1 => "belt",
-                                    2 => "infinite_io",
-                                    3 => "table",
-                                    _ => "",
-                                }
-                                .into(),
-                            ),
+                            item: match i {
+                                0 => "inserter",
+                                1 => "belt",
+                                2 => "infinite_io",
+                                3 => "table",
+                                _ => "",
+                            }
+                            .into(),
+
                             quantity: i,
                         })),
                     ));

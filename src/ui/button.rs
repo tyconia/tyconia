@@ -87,6 +87,8 @@ impl Default for DepressButton {
 /// Indicates whether a button uses a name or an icon
 pub enum ButtonType {
     /// Aspect ratio is 31 / 7 for text
+    Menu { text: String, font_size: f32 },
+    /// Aspect ratio is 31 / 7 for text
     Text { text: String, font_size: f32 },
 
     /// Icons will use a square aspect ratio
@@ -131,7 +133,7 @@ pub fn spawn_button<'a, 'b>(
     ui: &Res<UiAssets>,
 ) -> EntityCommands<'a> {
     let button_padding = match content_type {
-        ButtonType::Text { .. } => UiRect::axes(Val::Px(8. * UI_SCALE), Val::Px(3.5 * UI_SCALE)),
+        ButtonType::Menu { .. } => UiRect::axes(Val::Px(7. * UI_SCALE), Val::Px(3.5 * UI_SCALE)),
         ButtonType::LabeledIcon { .. } => {
             UiRect::axes(Val::Px(UI_SCALE * 2.5), Val::Px(UI_SCALE * 2.))
         }
@@ -177,11 +179,23 @@ pub fn spawn_button<'a, 'b>(
 
         parent.with_children(|parent| {
             match content_type {
-                ButtonType::Text { text, font_size } => {
+                ButtonType::Menu { text, font_size } => {
                     parent.spawn((
                         Text::new(text),
                         TextFont {
                             font: fonts.jersey_25.clone(),
+                            font_size,
+                            font_smoothing: FontSmoothing::AntiAliased,
+                        },
+                        TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                    ));
+                }
+
+                ButtonType::Text { text, font_size } => {
+                    parent.spawn((
+                        Text::new(text),
+                        TextFont {
+                            font: fonts.jersey.clone(),
                             font_size,
                             font_smoothing: FontSmoothing::AntiAliased,
                         },

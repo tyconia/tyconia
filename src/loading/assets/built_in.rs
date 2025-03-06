@@ -20,38 +20,40 @@ pub struct FontAssets {
 pub struct TextureAssets {
     #[asset(path = "textures/art-products.png")]
     pub products: Handle<Image>,
-    #[asset(path = "textures/bevy.png")]
-    pub bevy: Handle<Image>,
-    #[asset(path = "textures/github.png")]
-    pub github: Handle<Image>,
+    #[asset(path = "textures/art-products-bg.png")]
+    pub bg: Handle<Image>,
+    //#[asset(path = "textures/bevy.png")]
+    //pub bevy: Handle<Image>,
+    //#[asset(path = "textures/github.png")]
+    //pub github: Handle<Image>,
     #[asset(path = "textures/infiniteio32bit.png")]
     pub infinite_io: Handle<Image>,
-    #[asset(path = "textures/isometric_floors.png")]
-    pub isometric_floors: Handle<Image>,
-    #[asset(path = "textures/isometric_kitchen_floors.png")]
-    pub isometric_kitchen_floors: Handle<Image>,
-    #[asset(path = "textures/isometric_countertop.png")]
-    pub isometric_countertop: Handle<Image>,
-    #[asset(path = "textures/isometric_belts.png")]
-    pub isometric_belts: Handle<Image>,
-    #[asset(path = "textures/isometric_inserters.png")]
-    pub isometric_inserters: Handle<Image>,
-    #[asset(path = "textures/isometric_table.png")]
-    pub isometric_table: Handle<Image>,
-
-    #[asset(path = "textures/burger.png")]
-    pub burger: Handle<Image>,
-    #[asset(path = "textures/pizza.png")]
-    pub pizza: Handle<Image>,
-    #[asset(path = "textures/fries.png")]
-    pub fries: Handle<Image>,
-    #[asset(path = "textures/choco.png")]
-    pub choco: Handle<Image>,
+    //#[asset(path = "textures/isometric_floors.png")]
+    //pub isometric_floors: Handle<Image>,
+    //#[asset(path = "textures/isometric_kitchen_floors.png")]
+    //pub isometric_kitchen_floors: Handle<Image>,
+    //#[asset(path = "textures/isometric_countertop.png")]
+    //pub isometric_countertop: Handle<Image>,
+    //#[asset(path = "textures/isometric_belts.png")]
+    //pub isometric_belts: Handle<Image>,
+    //#[asset(path = "textures/isometric_inserters.png")]
+    //pub isometric_inserters: Handle<Image>,
+    //#[asset(path = "textures/isometric_table.png")]
+    //pub isometric_table: Handle<Image>,
+    //
+    //#[asset(path = "textures/burger.png")]
+    //pub burger: Handle<Image>,
+    //#[asset(path = "textures/pizza.png")]
+    //pub pizza: Handle<Image>,
+    //#[asset(path = "textures/fries.png")]
+    //pub fries: Handle<Image>,
+    //#[asset(path = "textures/choco.png")]
+    //pub choco: Handle<Image>,
 }
 
 #[derive(AssetCollection, Resource)]
 pub struct UiAssets {
-    #[asset(path = "textures/ui/title.png")]
+    #[asset(path = "textures/ui/title_0.png")]
     pub title: Handle<Image>,
 
     #[asset(path = "textures/ui/ui_selection.png")]
@@ -96,6 +98,8 @@ pub struct UiAssets {
     pub back_ico: Handle<Image>,
     #[asset(path = "textures/ui/undo_ico.png")]
     pub undo_ico: Handle<Image>,
+    #[asset(path = "textures/ui/dropdown_ico.png")]
+    pub dropdown_ico: Handle<Image>,
 
     // windows
     #[asset(path = "textures/ui/close_ico.png")]

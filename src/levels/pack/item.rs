@@ -1,25 +1,20 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 use bevy_asset_loader::asset_collection::AssetCollection;
+use std::path::PathBuf;
 
 /// Represents an item.
 /// Item unlock/lock depends on available recipes
+//#[derive(Component, Debug, PartialEq, Clone, Reflect, Eq, Hash)]
+//pub struct ItemId(pub String);
+
 #[derive(Component, Debug, PartialEq, Clone, Reflect, Eq, Hash)]
+#[reflect(Hash)]
 pub struct ItemId(pub String);
 
-#[derive(Resource, Debug, PartialEq, Clone, Reflect, Eq)]
-pub struct ItemThumbnail(pub HashMap<ItemId, Handle<Image>>);
-
-impl AssetCollection for ItemThumbnail {
-    fn load(world: &mut World) -> Vec<UntypedHandle> {
-        vec![]
-    }
-
-    fn create(world: &mut World) -> Self {
-        world.resource_scope(
-            |world, assets: bevy::prelude::Mut<bevy_asset_loader::dynamic_asset::DynamicAssets>| {},
-        );
-        Self(HashMap::new())
+impl From<&'static str> for ItemId {
+    fn from(s: &'static str) -> Self {
+        Self(s.into())
     }
 }
 

@@ -121,18 +121,19 @@ pub fn spawn_checkbox<'a, 'b, C: CycleState>(
     cmd.spawn((
         Node {
             aspect_ratio: Some(1.),
-            height: Val::Px(UI_SCALE * 4.),
-            width: Val::Px(UI_SCALE * 4.),
-            margin: UiRect::all(Val::Px(UI_SCALE)),
+            //height: Val::Px(UI_SCALE * 4.),
+            height: Val::Percent(100.),
+            //width: Val::Px(UI_SCALE * 4.),
             ..default()
         },
-        BackgroundColor(Color::WHITE),
+        //BackgroundColor(Color::WHITE),
     ))
     .with_children(|parent| {
         super::spawn_button(
             super::ButtonType::Icon {
                 image: state.icon(&ui),
-                image_size: Val::Px(super::UI_SCALE * 3.),
+                //image_size: Val::Px(super::UI_SCALE * 3.),
+                image_size: Val::Percent(100.),
             },
             (state, components),
             parent,

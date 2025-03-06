@@ -11,14 +11,17 @@ mod prompt;
 mod range_slider;
 //mod selection;
 mod system_cursor;
+mod tabs;
 mod tooltip;
 mod window;
 
 pub use button::*;
 pub use checkbox::*;
+pub use dropdown::*;
 pub use notification::*;
 pub use range_slider::*;
 pub use system_cursor::*;
+pub use tabs::*;
 pub use window::*;
 
 use crate::loading::FontAssets;

@@ -14,6 +14,9 @@ pub struct LoadingPlugin;
 /// If interested, take a look at <https://bevy-cheatbook.github.io/features/assets.html>
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
+        //#[cfg(not(target_arch = "wasm32"))]
+        //app.add_plugins((ItemTextureMapPlugin,));
+
         app.add_loading_state(
             LoadingState::new(GameState::Loading)
                 .continue_to_state(GameState::Menu)

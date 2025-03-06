@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
+use std::ops::Range;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::scripts::callbacks;
@@ -15,29 +16,51 @@ pub struct SurfacesPlugin;
 
 impl Plugin for SurfacesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_sub_state::<SurfaceState>();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_sub_state::<SurfaceState>()
+            .insert_resource(scripts::Surfaces { index: 10 });
 
         #[cfg(not(target_arch = "wasm32"))]
         app.register_type::<SurfaceBuilder>()
-            .add_systems(
-                OnEnter(SurfaceState::Loading),
-                event_handler::<callbacks::OnSurfaceCreate, RhaiScriptingPlugin>,
-            )
-            .add_systems(
-                Update,
-                (
-                    //|| info!("entered surfaces"),
-                    crate::mods::trigger_callback::<SurfaceBuilder, callbacks::OnSurfaceCreate>,
-                )
-                    .after(crate::mods::load_scripts)
-                    .chain(),
-            )
-            .add_plugins(scripts::SurfacesScriptingPlugin);
+            //.add_systems(
+            //    OnEnter(SurfaceState::Loading),
+            //    event_handler::<scripts::callbacks::OnSurfaceCreate, RhaiScriptingPlugin>,
+            //)
+            //.add_systems(
+            //    Update,
+            //    (
+            //        //|| info!("entered surfaces"),
+            //        crate::mods::trigger_callback(
+            //            scripts::callbacks::OnSurfaceCreate,
+            //            SurfaceBuilder::default(),
+            //        ),
+            //    )
+            //        .after(crate::mods::load_scripts)
+            //        .chain(),
+            //)
+            //.add_plugins(scripts::SurfacesScriptingPlugin)
+            ;
     }
 }
 
 #[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Reflect)]
-pub struct SurfaceBuilder;
+pub struct SurfaceBuilder {
+    pub size: (usize, usize),
+    pub texture_indices: Vec<usize>,
+}
+
+impl SurfaceBuilder {
+    fn create_map(cmd: &mut Commands) -> TilemapId {
+        let tilemap = cmd.spawn_empty().id();
+
+        TilemapId(tilemap)
+    }
+
+    fn to_surface<T: Into<Vec<TilemapId>>>(self, maps: T) -> Surface {
+        Surface { maps: maps.into() }
+    }
+}
 
 #[derive(Default, Clone, Eq, PartialEq, Hash, Debug, Reflect)]
 pub struct Surface {
@@ -76,58 +99,52 @@ impl SurfaceState {
 #[cfg(not(target_arch = "wasm32"))]
 pub mod scripts {
 
+    use crate::GameState;
     use bevy::prelude::*;
+    use bevy_mod_scripting::{
+        core::{
+            bindings::{function::script_function::*, ReflectReference},
+            error::InteropError,
+        },
+        script_bindings,
+    };
     pub struct SurfacesScriptingPlugin;
 
     impl Plugin for SurfacesScriptingPlugin {
         fn build(&self, app: &mut App) {
-            app.add_systems(Startup, api::assign_surfaces_fn);
+            app.add_systems(Startup, register_surfaces);
         }
     }
 
-    pub mod api {
+    #[derive(Reflect, Resource)]
+    pub struct Surfaces {
+        pub index: i32,
+    }
 
-        use crate::SurfaceState;
-        use bevy::prelude::*;
-        use bevy_mod_scripting::core::{
-            bindings::function::{namespace::*, script_function::FunctionCallContext},
-            error::InteropError,
-        };
+    impl Surfaces {
+        pub fn set(&mut self, num: i32) {
+            self.index = num;
+        }
+    }
 
-        #[derive(Reflect)]
-        pub struct Surfaces;
+    #[allow(dead_code)]
+    #[script_bindings(name = "surfaces")]
+    impl Surfaces {
+        pub fn create() {
+            info!("Created surface");
+        }
 
-        pub fn assign_surfaces_fn(mut world: &mut World) {
-            NamespaceBuilder::<Surfaces>::new_unregistered(&mut world)
-                .register("add_surface", |s: String| {
-                    info!("Adding new surface {}", s);
-                })
-                .register(
-                    "trigger_resurface",
-                    |ctx: FunctionCallContext| -> Result<(), InteropError> {
-                        let world = ctx.world()?;
-                        let next_state_id = world
-                            .get_component_id(std::any::TypeId::of::<NextState<SurfaceState>>())?;
-                        let next_state = world.get_resource(next_state_id.unwrap())?;
-                        let next_state = next_state.unwrap().set(Box::new(SurfaceState::Loading));
+        pub fn add_to(num_1: i32, num_2: i32) -> i32 {
+            num_1 + num_2
+        }
 
-                        Ok(())
-                    },
-                )
-                .register(
-                    "trigger_transition_surface",
-                    |ctx: FunctionCallContext| -> Result<(), InteropError> {
-                        let world = ctx.world()?;
-                        let next_state_id = world
-                            .get_component_id(std::any::TypeId::of::<NextState<SurfaceState>>())?;
-                        let next_state = world.get_resource(next_state_id.unwrap())?;
-                        let next_state = next_state
-                            .unwrap()
-                            .set(Box::new(SurfaceState::Loaded { current: None }));
+        pub fn builder(ctx: FunctionCallContext) -> Result<ReflectReference, InteropError> {
+            let world = ctx.world().unwrap();
+            let id = world
+                .get_resource_id(std::any::TypeId::of::<Surfaces>())?
+                .unwrap();
 
-                        Ok(())
-                    },
-                );
+            Ok(world.get_resource(id).unwrap().unwrap())
         }
     }
 
@@ -146,6 +163,10 @@ pub mod scripts {
             }
         }
 
-        pub fn ds() {}
+        impl Clone for OnSurfaceCreate {
+            fn clone(&self) -> Self {
+                Self
+            }
+        }
     }
 }

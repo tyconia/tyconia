@@ -12,9 +12,6 @@ organization = "allurestudios"
 application = "tyconic"
 support_link = "https://ko-fi.com/yorqat"
 
-[workspace]
-members = ["mobile"]
-
 [profile.dev.package."*"]
 opt-level = 3
 
@@ -44,13 +41,13 @@ dev = [
 
 # mods scripting currently not working with wasm - see makspll/bevy_mod_scripting#260
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy_mod_scripting = { version = "0.9.3", default-features = false ,features = ["rhai", "bevy_bindings", "core_functions"] }
+bevy_mod_scripting = { version = "0.9.8", default-features = false ,features = ["rhai", "bevy_bindings", "core_functions"] }
 
 # All of Bevy's default features exept for the audio related ones (bevy_audio, vorbis), since they clash with bevy_kira_audio
 #   and android_shared_stdcxx/android-game-activity, since those are covered in `mobile`
 [dependencies]
 bevy = { version = "0.15.0", default-features = false, features = [
-    "file_watcher",
+    # "file_watcher",
     "animation",
     "bevy_asset",
     "bevy_color",

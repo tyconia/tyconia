@@ -5,11 +5,12 @@ mod levels;
 mod loading;
 mod menu;
 mod player;
+mod story;
 pub mod ui;
 
-#[cfg(not(target_arch = "wasm32"))]
+pub use story::*;
+
 mod mods;
-#[cfg(not(target_arch = "wasm32"))]
 pub use mods::*;
 
 use crate::actions::ActionsPlugin;
@@ -33,6 +34,9 @@ impl Default for DeveloperMode {
         Self(false)
     }
 }
+
+#[derive(Component)]
+pub struct ChangeStates<T: States>(T);
 
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
@@ -76,10 +80,15 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins((ModProfilePlugin,))
+            .register_type::<ModPack>();
+
+
         #[cfg(not(target_arch = "wasm32"))]
         app.add_plugins((ScriptingPlugin,));
 
         app.init_state::<GameState>()
+            .register_type::<State<GameState>>()
             .init_state::<DeveloperMode>()
             .add_event::<GameState>()
             .add_systems(
@@ -106,6 +115,13 @@ impl Plugin for GamePlugin {
             app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()));
         }
     }
+}
+
+#[derive(Debug, Resource, Reflect, Hash, PartialEq, Eq, Clone)]
+pub struct ModPack {
+    pub mod_id: Meta,
+    pub descriptor: MetaDescriptor,
+    pub attributions: MetaAttributions,
 }
 
 mod tests {
@@ -188,14 +204,14 @@ mod tests {
     fn mod_pack_base_items() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let mod_pack = crate::ItemPack(vec![
-                crate::ItemId("pizza_slice".into()),
-                crate::ItemId("hamburger_hand".into()),
-                crate::ItemId("choco_cup".into()),
-                crate::ItemId("fries_medium".into()),
-                crate::ItemId("potato_medium".into()),
-                crate::ItemId("cheese_wheel".into()),
-                crate::ItemId("bread_loaf".into()),
-                crate::ItemId("pork_slab".into()),
+                "pizza_slice".into(),
+                "hamburger_hand".into(),
+                "choco_cup".into(),
+                "fries_medium".into(),
+                "potato_medium".into(),
+                "cheese_wheel".into(),
+                "bread_loaf".into(),
+                "pork_slab".into(),
             ]);
             let type_registry = type_registry.read();
 
@@ -221,9 +237,8 @@ mod tests {
     fn mod_pack_tyconic() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let mod_pack = crate::ModPack {
-                meta: crate::Meta {
+                mod_id: crate::Meta {
                     mod_name: "tyconic".into(),
-                    namespace: crate::Namespace::Vanilla,
                     version: (0, 0, 0).into(),
                 },
                 descriptor: crate::MetaDescriptor {
@@ -234,7 +249,7 @@ mod tests {
                     thumbnail: None,
                     cover_art: None,
                     dependencies: vec![crate::MetaSource {
-                        id: "base_0.0.0-dev#Vanilla".into(),
+                        id: crate::MetaShorthand("base_0.1.0".into()),
                         sources: vec![],
                     }]
                     .into(),
@@ -253,7 +268,9 @@ mod tests {
 
             let serialized = ron::ser::to_string_pretty(
                 &reflect_serializer,
-                ron::ser::PrettyConfig::new().depth_limit(6),
+                ron::ser::PrettyConfig::new()
+                    .depth_limit(6)
+                    .indentor("  ".into()),
             )
             .unwrap();
 
@@ -269,9 +286,8 @@ mod tests {
     fn mod_pack_base() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let mod_pack = crate::ModPack {
-                meta: crate::Meta {
+                mod_id: crate::Meta {
                     mod_name: "base".into(),
-                    namespace: crate::Namespace::Vanilla,
                     version: (0, 0, 0).into(),
                 },
                 descriptor: crate::MetaDescriptor {
@@ -315,18 +331,16 @@ mod tests {
                 description: "".into(),
                 meta: crate::Meta {
                     mod_name: "Tyconic".to_string(),
-                    namespace: crate::Namespace::Vanilla,
                     version: (0, 1, 0).into(),
                 },
                 items: vec![
-                    crate::ItemId("pizza_slice".into()),
-                    crate::ItemId("hamburger".into()),
-                    //crate::ItemId::from(("Choco", "choco_cup")),
-                    //crate::ItemId::from(("Fries", "french_fries")),
-                    //crate::ItemId::from(("Potato", "potato_medium")),
-                    crate::ItemId("cheese_wheel".into()),
-                    crate::ItemId("bread_loaf".into()),
-                    crate::ItemId("pork_slab".into()),
+                    "pizza_slice".into(),
+                    "hamburger".into(),
+                    "french_fries".into(),
+                    "potato_medium".into(),
+                    "cheese_wheel".into(),
+                    "bread_loaf".into(),
+                    "beef_slab".into(),
                 ],
                 research: vec![
                     crate::ResearchId("Lemon stand I".into()),

@@ -18,14 +18,12 @@ impl Plugin for InventoryPlugin {
             .add_state_scoped_event::<EnableInventory>(EnableHUD::ENABLED)
             .add_systems(
                 Update,
-                ((update_inventory_slots, handle_inventory_enable)
+                ((repopulate_inventory_slots, handle_inventory_enable)
                     .run_if(in_state(EnableHUD::ENABLED)),),
             )
             .add_systems(
                 OnEnter(EnableInventory::ENABLED),
-                (spawn_inventory, populate_inventory_slots)
-                    .chain()
-                    .after(spawn_hud_backdrop),
+                (spawn_inventory,).after(spawn_hud_backdrop),
             )
             .add_plugins((
                 interact::InventoryInteractionPlugin,
@@ -53,146 +51,92 @@ pub struct InventorySlot {
     pub selected: bool,
 }
 
-pub fn update_inventory_slots(
+// inventory component to flag a slot for render
+#[derive(Debug, Component, Default, Clone)]
+pub struct UpdateInventorySlot;
+
+pub fn repopulate_inventory_slots(
     mut cmd: Commands,
-    inventory_slot: Query<(Entity, &InventorySlot, &Children), Changed<InventorySlot>>,
+    inventory_slot: Query<(Entity, &InventorySlot, Option<&Children>), With<UpdateInventorySlot>>,
     fonts: Res<loading::FontAssets>,
     textures: Res<loading::TextureAssets>,
 ) {
     inventory_slot
         .iter()
         .for_each(|(entity_slot, slot, children)| {
-            children
-                .iter()
-                .for_each(|child| cmd.entity(*child).despawn_recursive());
-
-            cmd.entity(entity_slot).with_children(|parent| {
-                let mut spawn_child = parent.spawn((Node {
-                    height: Val::Px(ui::UI_SCALE * 8.),
-                    aspect_ratio: Some(1.),
-                    position_type: PositionType::Relative,
-
-                    overflow: Overflow::clip(),
-                    ..default()
-                },));
-
-                if let Some(quantity) = slot
-                    .entry
-                    .as_ref()
-                    .and_then(|item_entry| match item_entry.item.0.as_str() {
-                        "auto_arm" => {
-                            Some((item_entry.quantity, textures.isometric_inserters.clone()))
-                        }
-                        "mover_belt" => {
-                            Some((item_entry.quantity, textures.isometric_belts.clone()))
-                        }
-                        "infinite_io" => Some((item_entry.quantity, textures.infinite_io.clone())),
-                        "table" => Some((item_entry.quantity, textures.isometric_table.clone())),
-                        _ => None,
-                    })
-                    .and_then(|(quantity, image)| {
-                        spawn_child.insert(ImageNode {
-                            image,
-                            color: if quantity < 1 {
-                                Color::srgba_u8(255, 255, 255, 100)
-                            } else {
-                                Default::default()
-                            },
-                            ..default()
-                        });
-
-                        Some(quantity)
-                    })
-                {
-                    parent.spawn((
-                        if quantity > 0 {
-                            Visibility::Visible
-                        } else {
-                            Visibility::Hidden
-                        },
-                        Node {
-                            position_type: PositionType::Absolute,
-                            top: Val::Px(ui::UI_SCALE),
-                            left: Val::Px(ui::UI_SCALE * 2.),
-                            ..default()
-                        },
-                        Text::new(format!("{}", quantity)),
-                        TextColor::BLACK,
-                        TextFont {
-                            font: fonts.jersey.clone(),
-                            font_size: ui::UI_SCALE * 2.,
-                            font_smoothing: bevy::text::FontSmoothing::AntiAliased,
-                        },
-                    ));
-                }
+            children.map(|children| {
+                children
+                    .iter()
+                    .for_each(|child| cmd.entity(*child).despawn_recursive());
             });
-        });
-}
 
-pub fn populate_inventory_slots(
-    mut cmd: Commands,
-    hotbar_slot: Query<(Entity, &InventorySlot), Without<Children>>,
-    textures: Res<loading::TextureAssets>,
-    fonts: Res<loading::FontAssets>,
-) {
-    hotbar_slot.iter().for_each(|(entity, slot)| {
-        cmd.entity(entity).with_children(|parent| {
-            let mut spawn_child = parent.spawn((Node {
-                height: Val::Px(ui::UI_SCALE * 8.),
-                aspect_ratio: Some(1.),
-                position_type: PositionType::Relative,
+            cmd.entity(entity_slot)
+                .remove::<UpdateInventorySlot>()
+                .with_children(|parent| {
+                    let mut spawn_child = parent.spawn((Node {
+                        height: Val::Px(ui::UI_SCALE * 8.),
+                        aspect_ratio: Some(1.),
+                        position_type: PositionType::Relative,
 
-                overflow: Overflow::clip(),
-                ..default()
-            },));
-
-            if let Some(quantity) = slot
-                .entry
-                .as_ref()
-                .and_then(|item_entry| match item_entry.item.0.as_str() {
-                    "auto_arm" => Some((item_entry.quantity, textures.isometric_inserters.clone())),
-                    "mover_belt" => Some((item_entry.quantity, textures.isometric_belts.clone())),
-                    "infinite_io" => Some((item_entry.quantity, textures.infinite_io.clone())),
-                    "table" => Some((item_entry.quantity, textures.isometric_table.clone())),
-                    _ => None,
-                })
-                .and_then(|(quantity, image)| {
-                    spawn_child.insert(ImageNode {
-                        image,
-                        color: if quantity < 1 {
-                            Color::srgba_u8(255, 255, 255, 100)
-                        } else {
-                            Default::default()
-                        },
+                        overflow: Overflow::clip(),
                         ..default()
-                    });
+                    },));
 
-                    Some(quantity)
-                })
-            {
-                parent.spawn((
-                    if quantity > 0 {
-                        Visibility::Visible
-                    } else {
-                        Visibility::Hidden
-                    },
-                    Node {
-                        position_type: PositionType::Absolute,
-                        top: Val::Px(0.),
-                        left: Val::Px(ui::UI_SCALE * 0.75),
-                        ..default()
-                    },
-                    Text::new(format!("{}", quantity)),
-                    TextColor::BLACK,
-                    TextFont {
-                        font: fonts.jersey.clone(),
-                        font_size: ui::UI_SCALE * 2.,
-                        font_smoothing: bevy::text::FontSmoothing::AntiAliased,
-                    },
-                ));
-            }
+                    //if let Some(quantity) = slot
+                    //    .entry
+                    //    .as_ref()
+                    //    .and_then(|item_entry| match item_entry.item.ident.as_str() {
+                    //        "auto_arm" => {
+                    //            Some((item_entry.quantity, textures.isometric_inserters.clone()))
+                    //        }
+                    //        "mover_belt" => {
+                    //            Some((item_entry.quantity, textures.isometric_belts.clone()))
+                    //        }
+                    //        "infinite_io" => {
+                    //            Some((item_entry.quantity, textures.infinite_io.clone()))
+                    //        }
+                    //        "table" => {
+                    //            Some((item_entry.quantity, textures.isometric_table.clone()))
+                    //        }
+                    //        _ => None,
+                    //    })
+                    //    .and_then(|(quantity, image)| {
+                    //        spawn_child.insert(ImageNode {
+                    //            image,
+                    //            color: if quantity < 1 {
+                    //                Color::srgba_u8(255, 255, 255, 100)
+                    //            } else {
+                    //                Default::default()
+                    //            },
+                    //            ..default()
+                    //        });
+                    //
+                    //        Some(quantity)
+                    //    })
+                    //{
+                    //    parent.spawn((
+                    //        if quantity > 0 {
+                    //            Visibility::Visible
+                    //        } else {
+                    //            Visibility::Hidden
+                    //        },
+                    //        Node {
+                    //            position_type: PositionType::Absolute,
+                    //            top: Val::Px(ui::UI_SCALE),
+                    //            left: Val::Px(ui::UI_SCALE * 2.),
+                    //            ..default()
+                    //        },
+                    //        Text::new(format!("{}", quantity)),
+                    //        TextColor::BLACK,
+                    //        TextFont {
+                    //            font: fonts.jersey.clone(),
+                    //            font_size: ui::UI_SCALE * 2.,
+                    //            font_smoothing: bevy::text::FontSmoothing::AntiAliased,
+                    //        },
+                    //    ));
+                    //}
+                });
         });
-    });
 }
 
 // TODO: support overflow for higher Inventory capacity for InventoryUISource(s)
@@ -288,6 +232,7 @@ pub fn spawn_inventory(
                                                     index,
                                                     selected,
                                                 },
+                                                UpdateInventorySlot,
                                                 ui::CustomSkinBehavior,
                                             ));
                                         } else {

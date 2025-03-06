@@ -1,12 +1,17 @@
 use crate::actions::CursorWorldPosition;
 use crate::loading::TextureAssets;
+use std::time::Duration;
 
 use crate::GameState;
 use bevy::prelude::*;
+use bevy::time::common_conditions::*;
 use bevy_ecs_tilemap::prelude::*;
 
 mod surfaces;
 pub use surfaces::*;
+
+mod textures;
+pub use textures::*;
 
 pub struct ChunkPlugin;
 
@@ -20,8 +25,25 @@ impl Plugin for ChunkPlugin {
         app.add_plugins((TilemapPlugin, SurfacesPlugin))
             .add_systems(
                 OnEnter(GameState::Playing),
-                (render_floors, render_countertops).chain(),
+                (render_floors, render_countertops)
+                    .chain()
+                    .after(crate::loading::load_item_asset_map),
+            )
+            .add_systems(
+                Update,
+                cycle_textures
+                    .run_if(in_state(GameState::Playing).and(on_timer(Duration::from_secs(2)))),
             );
+    }
+}
+
+pub fn cycle_textures(mut tilemap_textures: Query<&mut TilemapTexture>) {
+    for mut tilemap_texture in tilemap_textures.iter_mut() {
+        if let TilemapTexture::Vector(ref mut textures) = &mut *tilemap_texture {
+            if let Some(last) = textures.pop() {
+                textures.insert(0, last);
+            }
+        }
     }
 }
 
@@ -73,12 +95,17 @@ pub struct FloorTilemap;
 pub type FloorTilemapQuery<'a, 'b, 'c> =
     TilemapQuery<'a, 'b, 'c, (Without<BuildingTilemap>, With<FloorTilemap>)>;
 
-fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
+fn render_countertops(
+    mut cmd: Commands,
+    textures: Res<TextureAssets>,
+    item_map: Query<&crate::loading::ItemTextureMap, With<crate::Level>>,
+) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
-    let inserter: Handle<Image> = textures.isometric_inserters.clone();
-    let infinite_io: Handle<Image> = textures.infinite_io.clone();
-    let belts: Handle<Image> = textures.isometric_belts.clone();
-    let burger: Handle<Image> = textures.burger.clone();
+    let texture = TilemapTexture::Vector(item_map.single().to_vec());
+    //let inserter: Handle<Image> = textures.isometric_inserters.clone();
+    //let infinite_io: Handle<Image> = textures.infinite_io.clone();
+    //let belts: Handle<Image> = textures.isometric_belts.clone();
+    //let burger: Handle<Image> = textures.burger.clone();
 
     let map_size = TilemapSize {
         x: QUADRANT_SIDE_LENGTH * 2,
@@ -94,28 +121,6 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
     let tilemap_entity = cmd.spawn_empty().id();
     let tilemap_id = TilemapId(tilemap_entity);
 
-    //fill_tilemap_rect(
-    //    TileTextureIndex(0),
-    //    TilePos { x: 0, y: 0 },
-    //    filled_sized,
-    //    tilemap_id,
-    //    &mut cmd,
-    //    &mut floor_storage,
-    //);
-    //
-    //fill_tilemap_rect(
-    //    TileTextureIndex(1),
-    //    TilePos {
-    //        x: QUADRANT_SIDE_LENGTH,
-    //        y: QUADRANT_SIDE_LENGTH,
-    //    },
-    //    filled_sized,
-    //    tilemap_id,
-    //    &mut cmd,
-    //    &mut floor_storage,
-    //);
-    //
-    //
     for x in 18..20 {
         for y in 0..20 {
             let tile = cmd
@@ -156,13 +161,13 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
 
         tile_transform.translation.y -= 3.;
 
-        cmd.spawn((
-            Sprite {
-                image: burger.clone(),
-                ..default()
-            },
-            tile_transform,
-        ));
+        //cmd.spawn((
+        //    Sprite {
+        //        image: burger.clone(),
+        //        ..default()
+        //    },
+        //    tile_transform,
+        //));
 
         let tile = cmd.spawn(TileBundle {
             position: tile_pos,
@@ -182,7 +187,7 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
             grid_size,
             size: map_size,
             storage: floor_storage.clone(),
-            texture: TilemapTexture::Vector([inserter, infinite_io, belts, burger].into()),
+            texture,
             tile_size,
             map_type,
             transform: tile_map_transform,
@@ -198,10 +203,14 @@ fn render_countertops(mut cmd: Commands, textures: Res<TextureAssets>) {
 #[derive(Debug, Component)]
 pub struct OriginalColor(pub TileColor);
 
-fn render_floors(mut cmd: Commands, textures: Res<TextureAssets>) {
+fn render_floors(
+    mut cmd: Commands,
+    textures: Res<TextureAssets>,
+    item_map: Query<&crate::loading::ItemTextureMap, With<crate::Level>>,
+) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
-    //let floor_handle: Handle<Image> = textures.isometric_kitchen_floors.clone();
-    let floor_handle: Handle<Image> = textures.isometric_floors.clone();
+
+    let texture = TilemapTexture::Vector(item_map.single().to_vec());
 
     let map_size = TilemapSize {
         x: QUADRANT_SIDE_LENGTH * 2,
@@ -220,11 +229,11 @@ fn render_floors(mut cmd: Commands, textures: Res<TextureAssets>) {
                     const FLOOR_TILE_SIZE: u32 = 2;
                     let tile_x = x / FLOOR_TILE_SIZE;
                     let tile_y = y / FLOOR_TILE_SIZE;
-                    if (tile_x + tile_y) % 2 == 0 {
-                        TileColor(Color::srgba_u8(100, 100, 100, 250))
-                    } else {
-                        TileColor::default()
-                    }
+                    //if (tile_x + tile_y) % 2 == 0 {
+                    //    TileColor(Color::srgba_u8(100, 100, 100, 250))
+                    //} else {
+                    TileColor::default()
+                    //}
                 };
 
                 let tile_pos = TilePos { x, y };
@@ -257,7 +266,7 @@ fn render_floors(mut cmd: Commands, textures: Res<TextureAssets>) {
             grid_size,
             size: map_size,
             storage: floor_storage.clone(),
-            texture: TilemapTexture::Vector([floor_handle.clone()].into()),
+            texture,
             tile_size,
             map_type,
             transform: get_tilemap_center_transform(

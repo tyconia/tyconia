@@ -24,7 +24,7 @@ impl Plugin for InventoryInteractionPlugin {
 //  b. right click will transfer one item at a time to an empty or a slot that has the same item
 // 2. dragging on a slot and be able to release the mouse on another slot
 fn interact_inventory_local(
-    cmd: Commands,
+    mut cmd: Commands,
     mut inventory_source: Query<
         (&mut Inventory, &mut InventoryActive),
         (With<InventoryUISource>, Without<InventorySlot>),
@@ -71,7 +71,7 @@ fn interact_inventory_local(
     }
 
     swap_entries.take().map(|(active, current)| {
-        let [(_, _, mut active_slot), (_, _, mut current_slot)] =
+        let [(active_slot_entity, _, mut active_slot), (current_slot_entity, _, mut current_slot)] =
             inventory_ui_slots.get_many_mut([active, current]).unwrap();
 
         // swap in inventory vector
@@ -81,6 +81,10 @@ fn interact_inventory_local(
 
         // swap in the UI, this is probably synchronized with inventory actual
         std::mem::swap(&mut active_slot.entry, &mut current_slot.entry);
+
+        for entity in [active_slot_entity, current_slot_entity] {
+            cmd.entity(entity).insert(UpdateInventorySlot);
+        }
     });
 
     unset_inventory_slot.take().map(|unset| {

@@ -1,60 +1,79 @@
-use crate::ui::*;
-use crate::GameState;
+use crate::*;
 use bevy::prelude::*;
-use bevy_mod_scripting::core::{
-    asset::ScriptAsset,
-    bindings::{function::namespace::*, AppReflectAllocator, ReflectReference},
-    callback_labels,
-    event::IntoCallbackLabel,
-    event::ScriptCallbackEvent,
-    handler::event_handler,
-    script::ScriptComponent,
+
+use bevy_mod_scripting::{
+    core::{
+        asset::ScriptAsset,
+        bindings::{AppReflectAllocator, ReflectReference},
+        callback_labels,
+        event::{IntoCallbackLabel, Recipients, ScriptCallbackEvent},
+        handler::event_handler,
+        script::ScriptComponent,
+    },
+    rhai::RhaiScriptingPlugin,
+    script_bindings, ScriptFunctionsPlugin,
 };
-use bevy_mod_scripting::rhai::RhaiScriptingPlugin;
-use bevy_mod_scripting::ScriptFunctionsPlugin;
 
 pub struct ScriptingPlugin;
 
 impl Plugin for ScriptingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((RhaiScriptingPlugin::default(), ScriptFunctionsPlugin))
-            .add_event::<ScriptCallbackEvent>()
-            .init_resource::<AppReflectAllocator>()
-            .register_type::<Base>()
-            .add_systems(Startup, (assign_base_fn,))
-            .add_systems(Startup, (load_scripts,).chain())
-            .register_type::<PlayerMovement>()
-            .add_systems(
-                Update,
-                (
-                    //send_event_::<PlayerMovement>,
-                    trigger_callback::<PlayerMovement, OnEvent>,
-                    event_handler::<OnEvent, RhaiScriptingPlugin>,
-                )
-                    .chain()
-                    .run_if(in_state(GameState::Playing)),
-            );
+        app.add_plugins((
+            (RhaiScriptingPlugin::default(), ScriptFunctionsPlugin),
+            LogBindingsPlugin,
+        ))
+        .add_systems(
+            OnEnter(GameState::Playing),
+            (load_scripts,).after(load_mods_from_profile).chain(),
+        )
+        .register_type::<PlayerMovement>()
+        .add_systems(
+            Update,
+            (
+                trigger_callback(
+                    OnEvent,
+                    PlayerMovement {
+                        max_speed: 60.,
+                        acceleration: 4.,
+                    },
+                ),
+                event_handler::<OnEvent, RhaiScriptingPlugin>,
+            )
+                .chain()
+                .run_if(in_state(GameState::Playing)),
+        );
     }
 }
 
 #[derive(Component)]
-pub struct ScriptCentral(pub Vec<Handle<ScriptAsset>>);
+pub struct ScriptHandles(pub Vec<Handle<ScriptAsset>>);
 
-pub fn load_scripts(mut cmd: Commands, asset_server: Res<AssetServer>) {
-    let hello_world_script = "mods/tyconic/assets/scripts/hello_world.rhai";
-    let script = asset_server.load::<ScriptAsset>(hello_world_script);
+pub fn load_scripts(
+    mut cmd: Commands,
+    asset_server: Res<AssetServer>,
+    loaded_mods: Query<(Entity, &super::ModProfile), With<Level>>,
+) {
+    let script_location = "assets/scripts";
+    let entry_point = "main.rhai";
 
-    cmd.spawn((
-        ScriptCentral(vec![script]),
-        StateScoped(GameState::Playing),
-        ScriptComponent(vec![hello_world_script.into()]),
-    ));
+    let (level_entity, loaded_mods) = loaded_mods.single();
+    for (mod_, path) in loaded_mods.0.iter() {
+        let script_path_buf = path.join(script_location).join(entry_point);
+        let script_path = script_path_buf.to_string_lossy().into_owned();
+        let script = asset_server.load::<ScriptAsset>(&*script_path);
+
+        cmd.entity(level_entity).with_children(|parent| {
+            parent.spawn((
+                ScriptHandles(vec![script]),
+                ScriptComponent(vec![script_path.into()]),
+            ));
+        });
+
+        info!("loading scripts of mod {}", mod_.mod_id);
+    }
 }
 
-#[derive(Reflect, Default)]
-pub struct MyReflectType;
-
-#[derive(Reflect, Default)]
+#[derive(Reflect, Default, Clone)]
 pub struct PlayerMovement {
     pub acceleration: f32,
     pub max_speed: f32,
@@ -71,115 +90,57 @@ impl Default for OnEvent {
     }
 }
 
-// trigger the event
-fn send_event(
-    mut writer: EventWriter<ScriptCallbackEvent>,
-    allocator: ResMut<AppReflectAllocator>,
-) {
-    let mut allocator = allocator.write();
-    let my_reflect_payload = ReflectReference::new_allocated(MyReflectType, &mut allocator);
-
-    writer.send(ScriptCallbackEvent::new_for_all(
-        OnEvent,
-        vec![my_reflect_payload.into()],
-    ));
-}
-
-pub fn trigger_callback<T: Reflect + Default, E: IntoCallbackLabel + Default>(
-    mut writer: EventWriter<ScriptCallbackEvent>,
-    allocator: ResMut<AppReflectAllocator>,
-    type_registry: Res<AppTypeRegistry>,
-
-    mut notification_channel: EventWriter<NotificationEvent>,
-) {
-    let registry = type_registry.read();
-
-    if !registry.contains(std::any::TypeId::of::<T>()) {
-        error!(
-            "Attempted to send event with unregistered type: {}",
-            std::any::type_name::<T>()
-        );
-
-        Notification {
-            level: NotificationLevel::Error,
-            title: "Unregistered type failure".into(),
-            description: format!(
-                "Attempted to send event with unregistered type: {}",
-                std::any::type_name::<T>()
-            ),
-        }
-        .queue(None, &mut notification_channel);
+impl Clone for OnEvent {
+    fn clone(&self) -> Self {
+        Self
     }
-    //assert!(registry.contains(std::any::TypeId::of::<T>()));
-
-    let mut allocator = allocator.write();
-    let reflect_payload = ReflectReference::new_allocated(T::default(), &mut allocator); // Ensure T: Default if needed
-
-    writer.send(ScriptCallbackEvent::new_for_all(
-        E::default(),
-        vec![reflect_payload.into()],
-    ));
 }
 
-fn send_event_<T: Reflect + Default>(
-    mut writer: EventWriter<ScriptCallbackEvent>,
-    allocator: ResMut<AppReflectAllocator>,
-    type_registry: Res<AppTypeRegistry>,
+pub const fn trigger_callback<T: Reflect + Clone, E: IntoCallbackLabel + Clone>(
+    event: E,
+    payload: T,
+) -> impl Fn(EventWriter<ScriptCallbackEvent>, ResMut<AppReflectAllocator>) {
+    move |mut writer: EventWriter<ScriptCallbackEvent>, allocator: ResMut<AppReflectAllocator>| {
+        let mut allocator = allocator.write();
+        let reflect_payload = ReflectReference::new_allocated(payload.clone(), &mut allocator);
 
-    mut notification_channel: EventWriter<NotificationEvent>,
-) {
-    let registry = type_registry.read();
-
-    if !registry.contains(std::any::TypeId::of::<T>()) {
-        error!(
-            "Attempted to send event with unregistered type: {}",
-            std::any::type_name::<T>()
-        );
-
-        Notification {
-            level: NotificationLevel::Error,
-            title: "Unregistered type failure".into(),
-            description: format!(
-                "Attempted to send event with unregistered type: {}",
-                std::any::type_name::<T>()
-            ),
-        }
-        .queue(None, &mut notification_channel);
+        writer.send(ScriptCallbackEvent::new(
+            event.clone(),
+            vec![reflect_payload.into(), "meowzer".into()],
+            Recipients::All,
+        ));
     }
-    //assert!(registry.contains(std::any::TypeId::of::<T>()));
-
-    let mut allocator = allocator.write();
-    let reflect_payload = ReflectReference::new_allocated(T::default(), &mut allocator); // Ensure T: Default if needed
-
-    writer.send(ScriptCallbackEvent::new_for_all(
-        OnEvent,
-        vec![reflect_payload.into()],
-    ));
 }
 
+// log namespace
 #[derive(Reflect)]
-pub struct Base;
+pub struct Log;
 
-fn assign_base_fn(mut world: &mut World) {
-    NamespaceBuilder::<Base>::new(&mut world).register("hello_world", |s: String| {
-        println!("welcome to the world, {}", s);
-    });
+#[allow(dead_code)]
+#[script_bindings(name = "log")]
+impl Log {
+    fn info(text: String) {
+        info!("{}", text);
+    }
 
-    let mut builder = NamespaceBuilder::<Base>::new(world);
-    builder
-        .register("log_info", |text: String| {
-            info!("{}", text);
-        })
-        .register("log_warning", |text: String| {
-            info!("{}", text);
-        })
-        .register("log_error", |text: String| {
-            error!("{}", text);
-        })
-        .register("log", |text: String| {
-            debug!("{}", text);
-        })
-        .register("log_debug", |text: String| {
-            debug!("{}", text);
-        });
+    fn err(text: String) {
+        error!("{}", text);
+    }
+
+    fn warn(text: String) {
+        warn!("{}", text);
+    }
+
+    fn debug(text: String) {
+        debug!("{}", text);
+    }
+}
+
+pub struct LogBindingsPlugin;
+
+impl Plugin for LogBindingsPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<Log>()
+            .add_systems(Startup, register_log);
+    }
 }

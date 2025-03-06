@@ -1,6 +1,7 @@
-use super::{ChangeStates, MenuNavState};
+use super::MenuNavState;
 use crate::loading::{FontAssets, UiAssets};
 use crate::ui::*;
+use crate::ChangeStates;
 
 mod audio;
 mod controls;
@@ -23,20 +24,28 @@ impl Plugin for SettingsPlugin {
         app.add_sub_state::<SettingsTabsState>()
             .add_state_scoped_event::<SettingsTabsState>(MenuNavState::Settings)
             .enable_state_scoped_entities::<SettingsTabsState>()
-            .add_systems(OnEnter(MenuNavState::Settings), (setup, set_setting_tab))
+            .add_systems(
+                OnEnter(MenuNavState::Settings),
+                (
+                    setup,
+                    //set_setting_tab
+                ),
+            )
             .add_systems(OnEnter(SettingsTabsState::Audio), (audio::setup,))
             .add_systems(OnEnter(SettingsTabsState::Controls), (controls::setup,))
             .add_systems(OnEnter(SettingsTabsState::Interface), (interface::setup,))
             .add_systems(OnEnter(SettingsTabsState::Mods), (mods::setup,))
+            .add_plugins(TabsPlugin::<SettingsTabsState>::new())
             .add_systems(
                 Update,
                 (
                     (
                         back_track,
-                        click_setting_tab,
-                        handle_setting_tab,
-                        reskin_hover_tab.run_if(any_with_component::<DepressButton>),
-                        reskin_active_tab.run_if(on_event::<SettingsTabsState>),
+                        //click_setting_tab,
+                        //click_tab::<SettingsTabsState>,
+                        //handle_setting_tab,
+                        //reskin_hover_tab.run_if(any_with_component::<DepressButton>),
+                        //reskin_active_tab.run_if(on_event::<SettingsTabsState>),
                     )
                         .run_if(in_state(MenuNavState::Settings)),
                     // audio
@@ -100,30 +109,25 @@ pub(crate) fn setup(
             WindowMeta::new("Settings".into(), 400., 4. / 3.),
             |parent| {
                 parent
-                    .spawn((
-                        Node {
-                            width: Val::Percent(100.),
-                            padding: UiRect::all(Val::Px(UI_SCALE)),
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::End,
-                            row_gap: Val::Px(UI_SCALE),
-                            column_gap: Val::Px(UI_SCALE),
-                            ..default()
-                        },
-                        //BackgroundColor(Color::BLACK),
-                    ))
+                    .spawn((Node {
+                        width: Val::Percent(100.),
+                        padding: UiRect::all(Val::Px(UI_SCALE)),
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::End,
+                        row_gap: Val::Px(UI_SCALE),
+                        column_gap: Val::Px(UI_SCALE),
+                        ..default()
+                    },))
                     .with_children(|parent| {
                         parent
                             .spawn(Node {
                                 flex_direction: FlexDirection::Row,
                                 flex_wrap: FlexWrap::Wrap,
                                 width: Val::Percent(100.),
-                                //column_gap: Val::Px(UI_SCALE),
-                                //row_gap: Val::Px(UI_SCALE),
                                 ..default()
                             })
                             .with_children(|parent| {
-                                vec![
+                                let tabs = vec![
                                     (
                                         "Display",
                                         ui.monitor_ico.clone(),
@@ -148,28 +152,10 @@ pub(crate) fn setup(
                                     ("Mods", ui.magic_axe_ico.clone(), SettingsTabsState::Mods),
                                 ]
                                 .into_iter()
-                                .for_each(|(name, icon, tab)| {
-                                    parent
-                                        .spawn(Node {
-                                            flex_grow: 1.,
-                                            //max_height: Val::Px(UI_SCALE * 18.),
-                                            ..default()
-                                        })
-                                        .with_children(|parent| {
-                                            spawn_button(
-                                                ButtonType::LabeledIcon {
-                                                    icon,
-                                                    text: name.into(),
-                                                    font_size: crate::ui::BUTTON_FONT,
-                                                    image_size: Val::Px(crate::ui::UI_SCALE * 3.),
-                                                },
-                                                (ChangeStates(tab), CustomSkinBehavior),
-                                                &mut *parent,
-                                                &fonts,
-                                                &ui,
-                                            );
-                                        });
-                                });
+                                .map(|(text, icon, tab)| (text.into(), icon, ChangeStates(tab)))
+                                .collect();
+
+                                spawn_tabs(parent, tabs, &ui, &fonts);
                             });
                     });
 
@@ -247,88 +233,4 @@ fn enable_developer_mode(
             }
         }
     }
-}
-
-// handle settings interactions
-fn click_setting_tab(
-    mut settings_tab_channel: EventWriter<SettingsTabsState>,
-    buttons: Query<(&DepressButton, &ChangeStates<SettingsTabsState>), Changed<DepressButton>>,
-) {
-    for (button, tab) in buttons.iter() {
-        if button.invoked() {
-            settings_tab_channel.send(tab.0);
-        }
-    }
-}
-
-fn set_setting_tab(
-    settings_tab: Res<State<SettingsTabsState>>,
-    mut settings_tab_channel: EventWriter<SettingsTabsState>,
-) {
-    settings_tab_channel.send(**settings_tab);
-}
-
-fn handle_setting_tab(
-    mut settings_tab_channel: EventReader<SettingsTabsState>,
-    mut next_tab: ResMut<NextState<SettingsTabsState>>,
-) {
-    settings_tab_channel.read().for_each(|tab| {
-        info!("settings tab activated: {:?}", tab);
-        next_tab.set(*tab);
-    });
-}
-
-fn reskin_hover_tab(
-    //mut cmd: Commands,
-    mut button: Query<
-        (&mut ImageNode, &ButtonSkins, &Interaction),
-        (With<ChangeStates<SettingsTabsState>>, Changed<Interaction>),
-    >,
-) {
-    for (mut image, skin, interaction) in button.iter_mut() {
-        if image.image != skin.active {
-            match *interaction {
-                Interaction::Hovered => {
-                    image.image = skin.hover.clone();
-                }
-                Interaction::None => {
-                    image.image = skin.normal.clone();
-                }
-                _ => {}
-            }
-        }
-    }
-}
-
-fn reskin_active_tab(
-    mut cmd: Commands,
-    //active_tab: Res<State<SettingsTabsState>>,
-    mut active_tab: EventReader<SettingsTabsState>,
-    mut skins: Query<(
-        Option<&Children>,
-        &mut ImageNode,
-        &ButtonSkins,
-        &ChangeStates<SettingsTabsState>,
-    )>,
-) {
-    active_tab.read().last().map(|active_tab| {
-        skins
-            .iter_mut()
-            .for_each(|(children, mut current_skin, button_skins, state)| {
-                if state.0 == *active_tab {
-                    current_skin.image = button_skins.active.clone();
-                    children.map(|children| {
-                        cmd.entity(children.first().unwrap().clone())
-                            .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
-                    });
-                } else {
-                    current_skin.image = button_skins.normal.clone();
-
-                    children.map(|children| {
-                        cmd.entity(children.first().unwrap().clone())
-                            .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
-                    });
-                }
-            });
-    });
 }

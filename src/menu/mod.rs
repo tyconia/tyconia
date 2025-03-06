@@ -1,6 +1,6 @@
 use crate::loading::{FontAssets, TextureAssets, UiAssets};
 use crate::ui::*;
-use crate::GameState;
+use crate::{ChangeStates, GameState};
 use bevy::prelude::*;
 
 pub mod load_game;
@@ -11,6 +11,8 @@ pub struct MenuPlugin;
 
 #[derive(Component)]
 pub struct MenuBackdrop;
+#[derive(Component)]
+pub struct MenuBackground;
 
 pub type MenuBackdropQuery<'a, 'b> = Query<'a, 'b, Entity, With<MenuBackdrop>>;
 
@@ -25,17 +27,72 @@ impl Plugin for MenuPlugin {
             .enable_state_scoped_entities::<MenuNavState>()
             .add_systems(
                 OnEnter(GameState::Menu),
-                (spawn_camera, spawn_menu_backdrop).chain(),
+                (spawn_camera, spawn_menu_backdrop, spawn_menu_background).chain(),
             )
             .add_systems(OnEnter(MenuNavState::Root), (setup,))
             // handle menu navigation
-            .add_systems(Update, main_menu_button.run_if(in_state(GameState::Menu)))
+            .add_systems(
+                Update,
+                (main_menu_button.run_if(in_state(GameState::Menu)),),
+            )
+            // moves background, hopefully prevents jitter
+            .add_systems(
+                PreUpdate,
+                move_menu_background.run_if(any_with_component::<MenuBackground>),
+            )
             // settings
-            .add_plugins((settings::SettingsPlugin,));
+            .add_plugins((settings::SettingsPlugin, new_game::NewGamePlugin));
     }
 }
 
-pub fn spawn_menu_backdrop(mut cmd: Commands, textures: Res<TextureAssets>) {
+pub fn move_menu_background(mut bg: Query<&mut Node, With<MenuBackground>>, time: Res<Time>) {
+    let mut bg = bg.single_mut();
+
+    // Calculate elapsed time in seconds.
+    let elapsed = time.elapsed_secs() as f32;
+
+    // Configuration for our circular path:
+    const SPEED: f32 = 0.08; // Angular speed in radians per second
+    const RADIUS: f32 = 1000.0; // Radius of the circle (in viewport units)
+    const CENTER_X: f32 = -4000.0; // Center of the circle (left position in vw)
+    const CENTER_Y: f32 = -4000.0; // Center of the circle (top position in vh)
+
+    // Set the left position to a cosine function so it oscillates around CENTER_X.
+    if let Val::Px(ref mut s) = bg.left {
+        *s = CENTER_X + RADIUS * (elapsed * SPEED).cos();
+    }
+
+    // Set the top position to a sine function so it oscillates around CENTER_Y.
+    if let Val::Px(ref mut s) = bg.top {
+        *s = CENTER_Y + RADIUS * (elapsed * SPEED).sin();
+    }
+}
+
+pub fn spawn_menu_background(mut cmd: Commands, textures: Res<TextureAssets>) {
+    cmd.spawn((
+        MenuBackground,
+        StateScoped(GameState::Menu),
+        Node {
+            height: Val::Px(16000.),
+            width: Val::Px(9000.),
+            top: Val::Px(-6000.),
+            left: Val::Px(-6000.),
+            //align_content: AlignContent::Center,
+            ..default()
+        },
+        ImageNode {
+            image: textures.bg.clone(),
+            image_mode: bevy::ui::widget::NodeImageMode::Tiled {
+                tile_x: true,
+                tile_y: true,
+                stretch_value: 1.4,
+            },
+            ..Default::default()
+        },
+    ));
+}
+
+pub fn spawn_menu_backdrop(mut cmd: Commands) {
     cmd.spawn((
         MenuBackdrop,
         StateScoped(GameState::Menu),
@@ -45,16 +102,7 @@ pub fn spawn_menu_backdrop(mut cmd: Commands, textures: Res<TextureAssets>) {
             width: Val::Vw(100.),
             ..default()
         },
-        BackgroundColor(Color::WHITE),
-        ImageNode {
-            image: textures.products.clone(),
-            image_mode: bevy::ui::widget::NodeImageMode::Tiled {
-                tile_x: true,
-                tile_y: true,
-                stretch_value: 1.,
-            },
-            ..Default::default()
-        },
+        //BackgroundColor(Color::WHITE),
     ));
 }
 
@@ -111,7 +159,7 @@ fn setup(
                     .with_children(|children| {
                         for (name, game_state, menu_nav) in &[
                             //("Continue", Some(GameState::Playing), None),
-                            //("New Game", None, Some(MenuNavState::NewGame)),
+                            ("New Game", None, Some(MenuNavState::NewGame)),
                             //("Load Game", None, Some(MenuNavState::LoadGame)),
                             ("Editor", Some(GameState::Playing), None),
                             ("Settings", None, Some(MenuNavState::Settings)),
@@ -121,7 +169,10 @@ fn setup(
                             match (*game_state, *menu_nav) {
                                 (Some(game_state), None) => {
                                     spawn_button(
-                                        (*name).into(),
+                                        ButtonType::Menu {
+                                            text: (*name).into(),
+                                            font_size: UI_SCALE * 3.,
+                                        },
                                         ChangeStates(game_state),
                                         children,
                                         &fonts,
@@ -130,7 +181,10 @@ fn setup(
                                 }
                                 (None, Some(menu_nav)) => {
                                     spawn_button(
-                                        (*name).into(),
+                                        ButtonType::Menu {
+                                            text: (*name).into(),
+                                            font_size: UI_SCALE * 3.,
+                                        },
                                         ChangeStates(menu_nav),
                                         children,
                                         &fonts,
@@ -162,7 +216,7 @@ fn setup(
                             width: Val::Px(180.),
                             ..default()
                         },
-                        BackgroundColor(Color::WHITE),
+                        //BackgroundColor(Color::WHITE),
                         ImageNode {
                             image: ui.kofi_donation_link.clone(),
                             image_mode: bevy::ui::widget::NodeImageMode::Stretch,
@@ -180,9 +234,6 @@ fn setup(
 }
 
 #[derive(Component)]
-struct ChangeStates<T: States>(T);
-
-#[derive(Component)]
 struct OpenLink(&'static str);
 
 /// Menu page navigation
@@ -191,7 +242,7 @@ struct OpenLink(&'static str);
 pub enum MenuNavState {
     #[default]
     Root,
-    //NewGame,
+    NewGame,
     //LoadGame,
     Settings,
 }
