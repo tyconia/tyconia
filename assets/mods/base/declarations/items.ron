@@ -1,3 +1,7 @@
 {
-    "tyconia::levels::pack::ItemPack": ([]),
+    "tyconia::levels::pack::ItemPack": ([
+        ("auto_arm"),
+        ("mover_belt"),
+        ("infinite_io"),
+    ]),
 }

@@ -1,0 +1,10 @@
+{
+  "tyconia::story::ScenarioDeclared": (
+    script_label: "jenny\'s_diner_dank",
+    title: "Jenny\'s diner dank",
+    description: "Jenny has always been a stick in the mud, making a name for herself in the diner business. How would that life be any more complicated by her cousin Vinnie, a criminal turned cook story",
+    config: {
+      "a": "",
+    },
+  ),
+}

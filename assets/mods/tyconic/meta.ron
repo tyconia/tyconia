@@ -1,41 +1,29 @@
 {
-    "tyconia::levels::pack::ModPack": (
-        meta: (
-            mod_name: "tyconic",
-            namespace: Vanilla,
-            version: (
-                major: 0,
-                minor: 0,
-                patch: 0,
-                stage: Dev,
-            ),
-        ),
-        descriptor: (
-            display_name: "Tyconic",
-            thumbnail: None,
-            cover_art: None,
-            descripion: "adds restaurants amenities and accomodations: NPCs, kitchen buildings etc",
-            dependencies: ([
-                (
-                    mod_name: "base",
-                    namespace: Vanilla,
-                    version: (
-                        major: 0,
-                        minor: 0,
-                        patch: 0,
-                        stage: Dev,
-                    ),
-                ),
-            ]),
-        ),
-        attributions: (
-            authors: [
-                "qarkdev+gh@gmail.com",
-            ],
-            licenses: [
-                "EULA",
-            ],
-            credits: [],
-        ),
+  "tyconia::ModPack": (
+    mod_id: (
+      mod_name: "tyconic",
+      version: (
+        major: 0,
+        minor: 0,
+        patch: 0,
+        stage: Dev,
+      ),
     ),
+    descriptor: (
+      display_name: "Tyconic",
+      thumbnail: None,
+      cover_art: None,
+      descripion: "adds restaurants amenities and accomodations: NPCs, kitchen buildings etc",
+      dependencies: [],
+    ),
+    attributions: (
+      authors: [
+        "qarkdev+gh@gmail.com",
+      ],
+      licenses: [
+        "EULA",
+      ],
+      credits: [],
+    ),
+  ),
 }
