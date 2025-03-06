@@ -1,0 +1,38 @@
+{
+  "tyconia::levels::story::ScriptDeclared": (
+    label: "",
+    actions: [
+      SpawnToLevel(
+        level_label: "prologue_restaurant",
+      ),
+      Move(
+        character: "base::pov_player",
+        reposition: (1.0, 1.0),
+      ),
+      Move(
+        character: "base::boss_frank",
+        reposition: (-8.0, -4.0),
+      ),
+      Move(
+        character: "base::boss_frank",
+        reposition: (1.0, 2.0),
+      ),
+      Converse(
+        character: "bois_of_liberty::frank",
+        content: Continue(text: "Sup cousin vinnie"),
+      ),
+      Move(
+        character: "base::pov_player",
+        reposition: (1.0, -3.0),
+      ),
+      Converse(
+        character: "bois_of_liberty::frank",
+        content: Prompt(text: "Aye, where you heading to cuh? Got my money?", choices: {"naw, boss I was just preparing you food, come right in": "bois_of_liberty::pleased_frank", "c\' mon frank, we\'ve gone waay back I got the money I just need by the end of the week": "bois_of_liberty::determined_frank"}),
+      ),
+      JumpTo(
+        condition: None,
+        story_beat_label: "chapter_1",
+      ),
+    ],
+  ),
+}

@@ -1,0 +1,25 @@
+{
+  "tyconia::levels::pack::research::ResearchDeclared": (
+    id: ("foodie_i"),
+    display_name: "Foodie I",
+    flavor_text: "Who knew food would sell :v",
+    unlock_condition: SatisfyAll([
+      ReachedMetric(
+        metric: "money",
+        value: 20000.0,
+      ),
+      SatisfyAny([
+        ReachedMetric(metric: "tyconic::cheese_wheel__total_produced", value: 3000.0),
+        ReachedMetric(metric: "tyconic::beef_slab__total_produced", value: 3000.0),
+      ]),
+      UnderMetric(
+        metric: "tyconic::kitchen_waste__total_produced",
+        value: 20.0,
+      ),
+    ]),
+    required_research: [
+      ("lemon_stand_i"),
+      ("street_smart_ii"),
+    ],
+  ),
+}
