@@ -60,7 +60,11 @@ pub fn spawn_mods_window(
         version: (0, 0, 0).into(),
     };
 
-    cmd.entity(hud_backdrop.single())
+    let Ok(hud_backdrop) = hud_backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(hud_backdrop)
         .with_children(|mut parent| {
             spawn_window(
                 &mut parent,

@@ -36,7 +36,9 @@ fn interact_inventory_local(
     mut swap_entries: Local<Option<(Entity, Entity)>>,
     mut unset_inventory_slot: Local<Option<Entity>>,
 ) {
-    let (mut inventory_source, mut inventory_active) = inventory_source.single_mut();
+    let Ok((mut inventory_source, mut inventory_active)) = inventory_source.get_single_mut() else {
+        return;
+    };
 
     let active = inventory_ui_slots
         .iter()
@@ -70,9 +72,12 @@ fn interact_inventory_local(
         }
     }
 
-    swap_entries.take().map(|(active, current)| {
-        let [(active_slot_entity, _, mut active_slot), (current_slot_entity, _, mut current_slot)] =
-            inventory_ui_slots.get_many_mut([active, current]).unwrap();
+    if let Some((active, current)) = swap_entries.take() {
+        let Ok([(active_slot_entity, _, mut active_slot), (current_slot_entity, _, mut current_slot)]) =
+            inventory_ui_slots.get_many_mut([active, current])
+        else {
+            return;
+        };
 
         // swap in inventory vector
         inventory_source
@@ -85,16 +90,15 @@ fn interact_inventory_local(
         for entity in [active_slot_entity, current_slot_entity] {
             cmd.entity(entity).insert(UpdateInventorySlot);
         }
-    });
+    }
 
-    unset_inventory_slot.take().map(|unset| {
-        for (_, _, mut unset) in inventory_ui_slots
-            .get_many_mut([unset])
-            .expect("unset entity is missing")
-        {
-            unset.selected = false;
-        }
-    });
+    if let Some(unset_entity) = unset_inventory_slot.take() {
+        let Ok([(_, _, mut unset_slot)]) = inventory_ui_slots.get_many_mut([unset_entity]) else {
+            return;
+        };
+
+        unset_slot.selected = false;
+    }
 }
 
 fn reskin_inventory_slot(

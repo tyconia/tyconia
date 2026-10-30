@@ -3,7 +3,11 @@ use crate::loading::FontAssets;
 use bevy::prelude::*;
 
 pub fn setup(mut cmd: Commands, backdrop: super::SettingsBackdropQuery, fonts: Res<FontAssets>) {
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(backdrop).with_children(|parent| {
         parent
             .spawn((
                 StateScoped(SettingsTabsState::Mods),

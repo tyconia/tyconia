@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use std::collections::HashMap;
 
-#[derive(Debug, Reflect)]
+#[derive(Debug, Reflect, Clone)]
 #[reflect(no_field_bounds)]
 pub enum ConditionFlag {
     // Logical combinations

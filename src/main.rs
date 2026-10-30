@@ -44,7 +44,9 @@ fn set_window_icon(
     windows: NonSend<WinitWindows>,
     primary_window: Query<Entity, With<PrimaryWindow>>,
 ) {
-    let primary_entity = primary_window.single();
+    let Ok(primary_entity) = primary_window.get_single() else {
+        return;
+    };
     let Some(primary) = windows.get_window(primary_entity) else {
         return;
     };

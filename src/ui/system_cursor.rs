@@ -7,14 +7,7 @@ impl Plugin for SystemCursorPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CursorEvent>()
             .init_resource::<CurrentCursor>()
-            .add_systems(
-                Update,
-                (
-                    handle_cursor_queue.run_if(on_event::<CursorEvent>),
-                    reskin_system_cursor
-                        .run_if(not(on_event::<CursorEvent>).or(resource_changed::<CurrentCursor>)),
-                ),
-            );
+            .add_systems(Update, (handle_cursor_queue, reskin_system_cursor).chain());
     }
 }
 
@@ -48,13 +41,12 @@ fn reskin_system_cursor(
     windows: Query<Entity, With<Window>>,
     current_cursor: Res<CurrentCursor>,
 ) {
-    for window in windows.iter() {
-        let mut window = cmd.entity(window);
+    if !current_cursor.is_changed() {
+        return;
+    }
 
-        if current_cursor.is_changed() {
-            window.insert(CursorIcon::System(current_cursor.0));
-        } else {
-            window.insert(CursorIcon::System(SystemCursorIcon::Default));
-        }
+    for window in windows.iter() {
+        cmd.entity(window)
+            .insert(CursorIcon::System(current_cursor.0));
     }
 }

@@ -83,10 +83,6 @@ impl Plugin for GamePlugin {
         app.add_plugins((ModProfilePlugin,))
             .register_type::<ModPack>();
 
-
-        #[cfg(not(target_arch = "wasm32"))]
-        app.add_plugins((ScriptingPlugin,));
-
         app.init_state::<GameState>()
             .register_type::<State<GameState>>()
             .init_state::<DeveloperMode>()
@@ -108,6 +104,7 @@ impl Plugin for GamePlugin {
                 PlayerPlugin,
                 levels::LevelsPlugin,
                 ui::UiPlugin,
+                /* stitch_lang::prelude::StitchPlugin, */
             ));
 
         #[cfg(debug_assertions)]

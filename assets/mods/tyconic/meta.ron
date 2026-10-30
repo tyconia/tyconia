@@ -14,7 +14,12 @@
       thumbnail: None,
       cover_art: None,
       descripion: "adds restaurants amenities and accomodations: NPCs, kitchen buildings etc",
-      dependencies: [],
+      dependencies: [
+        (
+          id: ("base_0.1.0"),
+          sources: [],
+        ),
+      ],
     ),
     attributions: (
       authors: [

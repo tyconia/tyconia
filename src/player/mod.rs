@@ -79,7 +79,9 @@ fn zoom_camera(
         .filter_map(|ui_action| ui_action.zoom())
         .sum();
 
-    let mut camera = camera.single_mut();
+    let Ok(mut camera) = camera.get_single_mut() else {
+        return;
+    };
 
     fn approx_inequal(a: f32, b: f32, tolerance: f32) -> bool {
         !((a - b).abs() <= tolerance)
@@ -151,7 +153,9 @@ fn hightlight_building(
     cursor_world_position: Res<CursorWorldPosition>,
     building_tilemap: TilemapQuery<(Without<FloorTilemap>, With<BuildingTilemap>)>,
 ) {
-    let (_, map_size, grid_size, map_type, tile_storage, map_transform) = building_tilemap.single();
+    let Ok((_, map_size, grid_size, map_type, tile_storage, map_transform)) = building_tilemap.get_single() else {
+        return;
+    };
 
     cursor_tile_position(
         &*cursor_world_position,
@@ -177,11 +181,14 @@ fn highlight_tile(
     floor_tilemap: TilemapQuery<(With<FloorTilemap>, Without<BuildingTilemap>)>,
     building_tilemap: TilemapQuery<(Without<FloorTilemap>, With<BuildingTilemap>)>,
 ) {
-    let (_, map_size, grid_size, map_type, tile_storage, map_transform) = floor_tilemap.single();
+    let Ok((_, map_size, grid_size, map_type, tile_storage, map_transform)) = floor_tilemap.get_single() else {
+        return;
+    };
 
     let occupied_tile = {
-        let (_, map_size, grid_size, map_type, tile_storage, map_transform) =
-            building_tilemap.single();
+        let Ok((_, map_size, grid_size, map_type, tile_storage, map_transform)) = building_tilemap.get_single() else {
+            return;
+        };
 
         cursor_tile_position(
             &*cursor_world_position,

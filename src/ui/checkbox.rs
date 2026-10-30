@@ -29,7 +29,7 @@ pub fn cycle_state<C: CycleState>(
 }
 
 /// Represents checkbox states
-#[derive(Debug, Component, Clone, Copy)]
+#[derive(Debug, Component, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CheckboxTristate {
     Active,
     Inactive,
@@ -54,10 +54,16 @@ impl CycleState for CheckboxTristate {
     }
 }
 
-#[derive(Debug, Component, Clone, Copy)]
+#[derive(Debug, Component, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CheckboxState {
     Active,
     Inactive,
+}
+
+impl CheckboxState {
+    pub fn is_active(&self) -> bool {
+        *self == Self::Active
+    }
 }
 
 impl CycleState for CheckboxState {
@@ -82,7 +88,9 @@ pub trait CycleState: Clone + Copy + Component {
     }
 
     fn refresh_icon(&self, cmd: &mut Commands, children: &Children, ui: &Res<UiAssets>) {
-        let child = children.first().unwrap();
+        let Some(child) = children.first() else {
+            return;
+        };
 
         let mut child_commands = cmd.entity(*child);
         let icon = self.icon(ui);

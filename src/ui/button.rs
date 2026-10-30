@@ -9,14 +9,164 @@ pub struct ButtonPlugin;
 
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                toggle_button_skin_states,
-                toggle_button_depress.run_if(any_with_component::<DepressButton>),
-            )
-                .run_if(any_with_component::<Button>),
-        );
+        app.add_observer(attach_button_observers);
+    }
+}
+
+#[derive(Component, Clone)]
+pub struct ButtonLabel;
+
+pub const BUTTON_LABEL_COLOR: Color = Color::srgba(0.356, 0.333, 0.333, 1.0);
+
+fn attach_button_observers(trigger: Trigger<OnAdd, Button>, mut commands: Commands) {
+    commands
+        .entity(trigger.entity())
+        .observe(button_pointer_down)
+        .observe(button_pointer_click)
+        .observe(button_pointer_up)
+        .observe(button_pointer_over)
+        .observe(button_pointer_out);
+}
+
+type ButtonQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Option<&'static mut DepressButton>,
+        Option<&'static CustomSkinBehavior>,
+        Option<&'static ButtonSkins>,
+        Option<&'static mut ImageNode>,
+        Option<&'static Children>,
+    ),
+>;
+
+fn set_label_color(
+    children: Option<&Children>,
+    labels: &mut Query<&mut TextColor, With<ButtonLabel>>,
+    color: Color,
+) {
+    let Some(children) = children else {
+        return;
+    };
+
+    for child in children.iter() {
+        if let Ok(mut text_color) = labels.get_mut(*child) {
+            text_color.0 = color;
+        }
+    }
+}
+
+fn button_pointer_down(
+    trigger: Trigger<Pointer<Down>>,
+    mut buttons: ButtonQuery,
+    mut labels: Query<&mut TextColor, With<ButtonLabel>>,
+) {
+    if trigger.button != PointerButton::Primary {
+        return;
+    }
+
+    let Ok((depress, custom_skin, skins, image, children)) = buttons.get_mut(trigger.entity())
+    else {
+        return;
+    };
+
+    if let Some(mut depress) = depress {
+        depress.pressed = true;
+        depress.invoked = false;
+    }
+
+    if custom_skin.is_some() {
+        return;
+    }
+
+    if let (Some(skins), Some(mut image)) = (skins, image) {
+        image.image = skins.active.clone();
+        set_label_color(children, &mut labels, Color::WHITE);
+    }
+}
+
+fn button_pointer_click(trigger: Trigger<Pointer<Click>>, mut buttons: ButtonQuery) {
+    if trigger.button != PointerButton::Primary {
+        return;
+    }
+
+    let Ok((depress, ..)) = buttons.get_mut(trigger.entity()) else {
+        return;
+    };
+
+    if let Some(mut depress) = depress {
+        depress.invoked = true;
+        depress.pressed = false;
+    }
+}
+
+fn button_pointer_up(
+    trigger: Trigger<Pointer<Up>>,
+    mut buttons: ButtonQuery,
+    mut labels: Query<&mut TextColor, With<ButtonLabel>>,
+) {
+    if trigger.button != PointerButton::Primary {
+        return;
+    }
+
+    let Ok((depress, custom_skin, skins, image, children)) = buttons.get_mut(trigger.entity())
+    else {
+        return;
+    };
+
+    if let Some(mut depress) = depress {
+        depress.pressed = false;
+    }
+
+    if custom_skin.is_some() {
+        return;
+    }
+
+    if let (Some(skins), Some(mut image)) = (skins, image) {
+        image.image = skins.hover.clone();
+        set_label_color(children, &mut labels, BUTTON_LABEL_COLOR);
+    }
+}
+
+fn button_pointer_over(
+    trigger: Trigger<Pointer<Over>>,
+    mut buttons: ButtonQuery,
+) {
+    let Ok((_, custom_skin, skins, image, _)) = buttons.get_mut(trigger.entity()) else {
+        return;
+    };
+
+    if custom_skin.is_some() {
+        return;
+    }
+
+    if let (Some(skins), Some(mut image)) = (skins, image) {
+        image.image = skins.hover.clone();
+    }
+}
+
+fn button_pointer_out(
+    trigger: Trigger<Pointer<Out>>,
+    mut buttons: ButtonQuery,
+    mut labels: Query<&mut TextColor, With<ButtonLabel>>,
+) {
+    let Ok((depress, custom_skin, skins, image, children)) = buttons.get_mut(trigger.entity())
+    else {
+        return;
+    };
+
+    if let Some(mut depress) = depress {
+        depress.pressed = false;
+        depress.invoked = false;
+    }
+
+    if custom_skin.is_some() {
+        return;
+    }
+
+    if let (Some(skins), Some(mut image)) = (skins, image) {
+        image.image = skins.normal.clone();
+        set_label_color(children, &mut labels, BUTTON_LABEL_COLOR);
     }
 }
 
@@ -98,6 +248,14 @@ pub enum ButtonType {
     },
 
     // Labeled Icon
+    LabeledIconReversed {
+        text: String,
+        icon: Handle<Image>,
+        font_size: f32,
+        image_size: Val,
+    },
+
+    // Labeled Icon
     LabeledIcon {
         text: String,
         icon: Handle<Image>,
@@ -134,7 +292,7 @@ pub fn spawn_button<'a, 'b>(
 ) -> EntityCommands<'a> {
     let button_padding = match content_type {
         ButtonType::Menu { .. } => UiRect::axes(Val::Px(7. * UI_SCALE), Val::Px(3.5 * UI_SCALE)),
-        ButtonType::LabeledIcon { .. } => {
+        ButtonType::LabeledIcon { .. } | ButtonType::LabeledIconReversed { .. } => {
             UiRect::axes(Val::Px(UI_SCALE * 2.5), Val::Px(UI_SCALE * 2.))
         }
         _ => UiRect::all(Val::Px(2.) * UI_SCALE),
@@ -162,7 +320,11 @@ pub fn spawn_button<'a, 'b>(
                 align_items: AlignItems::Center,
                 column_gap: Val::Px(UI_SCALE),
                 row_gap: Val::Px(UI_SCALE),
-                flex_direction: FlexDirection::RowReverse,
+                flex_direction: if let ButtonType::LabeledIconReversed { .. } = content_type {
+                    FlexDirection::RowReverse
+                } else {
+                    FlexDirection::Row
+                },
                 ..Default::default()
             },
             ImageNode {
@@ -187,7 +349,9 @@ pub fn spawn_button<'a, 'b>(
                             font_size,
                             font_smoothing: FontSmoothing::AntiAliased,
                         },
-                        TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                        TextColor(BUTTON_LABEL_COLOR),
+                        ButtonLabel,
+                        PickingBehavior::IGNORE,
                     ));
                 }
 
@@ -199,16 +363,21 @@ pub fn spawn_button<'a, 'b>(
                             font_size,
                             font_smoothing: FontSmoothing::AntiAliased,
                         },
-                        TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                        TextColor(BUTTON_LABEL_COLOR),
+                        ButtonLabel,
+                        PickingBehavior::IGNORE,
                     ));
                 }
 
                 ButtonType::Icon { image, image_size } => {
-                    let mut child_build = parent.spawn((Node {
-                        height: image_size,
-                        aspect_ratio: Some(1.),
-                        ..default()
-                    },));
+                    let mut child_build = parent.spawn((
+                        Node {
+                            height: image_size,
+                            aspect_ratio: Some(1.),
+                            ..default()
+                        },
+                        PickingBehavior::IGNORE,
+                    ));
 
                     if let Some(image) = image {
                         child_build.insert(ImageNode { image, ..default() });
@@ -228,7 +397,9 @@ pub fn spawn_button<'a, 'b>(
                             font_size,
                             font_smoothing: FontSmoothing::AntiAliased,
                         },
-                        TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)),
+                        TextColor(BUTTON_LABEL_COLOR),
+                        ButtonLabel,
+                        PickingBehavior::IGNORE,
                     ));
                     parent.spawn((
                         Node {
@@ -240,6 +411,38 @@ pub fn spawn_button<'a, 'b>(
                             image: icon,
                             ..default()
                         },
+                        PickingBehavior::IGNORE,
+                    ));
+                }
+
+                ButtonType::LabeledIconReversed {
+                    text,
+                    icon,
+                    font_size,
+                    image_size,
+                } => {
+                    parent.spawn((
+                        Text::new(text),
+                        TextFont {
+                            font: fonts.jersey_25.clone(),
+                            font_size,
+                            font_smoothing: FontSmoothing::AntiAliased,
+                        },
+                        TextColor(BUTTON_LABEL_COLOR),
+                        ButtonLabel,
+                        PickingBehavior::IGNORE,
+                    ));
+                    parent.spawn((
+                        Node {
+                            height: image_size,
+                            aspect_ratio: Some(1.),
+                            ..default()
+                        },
+                        ImageNode {
+                            image: icon,
+                            ..default()
+                        },
+                        PickingBehavior::IGNORE,
                     ));
                 }
             };
@@ -249,72 +452,4 @@ pub fn spawn_button<'a, 'b>(
     entity_cmd
 }
 
-fn toggle_button_skin_states(
-    mut cmd: Commands,
-    mut buttons: Query<
-        (
-            &Interaction,
-            &ButtonSkins,
-            &mut ImageNode,
-            Option<&Children>,
-        ),
-        (
-            Changed<Interaction>,
-            With<Button>,
-            Without<CustomSkinBehavior>,
-        ),
-    >,
-) {
-    for (interaction, skins, mut image_node, children) in buttons.iter_mut() {
-        match *interaction {
-            Interaction::Pressed => {
-                image_node.image = skins.active.clone();
 
-                children.map(|children| {
-                    cmd.entity(children.first().unwrap().clone())
-                        .insert(TextColor(Color::srgba(1., 1., 1., 1.0)));
-                });
-            }
-            Interaction::Hovered => {
-                image_node.image = skins.hover.clone();
-            }
-
-            Interaction::None => {
-                children.map(|children| {
-                    cmd.entity(children.first().unwrap().clone())
-                        .insert(TextColor(Color::srgba(0.356, 0.333, 0.333, 1.0)));
-                });
-
-                image_node.image = skins.normal.clone();
-            }
-        }
-    }
-}
-
-fn toggle_button_depress(
-    cmd: Commands,
-    mut buttons: Query<
-        (Entity, &mut DepressButton, &Interaction),
-        (Changed<Interaction>, With<Button>),
-    >,
-) {
-    for (entity, mut depress, interaction) in buttons.iter_mut() {
-        match *interaction {
-            Interaction::Pressed => {
-                depress.pressed = true;
-                depress.invoked = false;
-            }
-
-            Interaction::Hovered => {
-                if depress.pressed {
-                    depress.invoked = true;
-                }
-                depress.pressed = false;
-            }
-
-            Interaction::None => {
-                *depress = Default::default();
-            }
-        }
-    }
-}

@@ -46,7 +46,9 @@ impl Plugin for MenuPlugin {
 }
 
 pub fn move_menu_background(mut bg: Query<&mut Node, With<MenuBackground>>, time: Res<Time>) {
-    let mut bg = bg.single_mut();
+    let Ok(mut bg) = bg.get_single_mut() else {
+        return;
+    };
 
     // Calculate elapsed time in seconds.
     let elapsed = time.elapsed_secs() as f32;
@@ -121,7 +123,11 @@ fn setup(
     ui: Res<UiAssets>,
     backdrop: Query<Entity, With<MenuBackdrop>>,
 ) {
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(backdrop).with_children(|parent| {
         parent
             .spawn((
                 StateScoped(MenuNavState::Root),

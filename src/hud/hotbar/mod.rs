@@ -47,14 +47,17 @@ pub fn populate_hotbar_slots(
 ) {
     hotbar_slot.iter().for_each(|(entity, slot)| {
         cmd.entity(entity).with_children(|parent| {
-            let mut spawn_child = parent.spawn((Node {
-                height: Val::Px(ui::UI_SCALE * 8.),
-                aspect_ratio: Some(1.),
-                position_type: PositionType::Relative,
+            let mut spawn_child = parent.spawn((
+                Node {
+                    height: Val::Px(ui::UI_SCALE * 8.),
+                    aspect_ratio: Some(1.),
+                    position_type: PositionType::Relative,
 
-                overflow: Overflow::clip(),
-                ..default()
-            },));
+                    overflow: Overflow::clip(),
+                    ..default()
+                },
+                PickingBehavior::IGNORE,
+            ));
 
             //if let Some(quantity) = slot
             //    .0
@@ -116,7 +119,11 @@ pub fn spawn_hotbar(
     ui: Res<loading::UiAssets>,
     textures: Res<loading::TextureAssets>,
 ) {
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(backdrop).with_children(|parent| {
         parent
             .spawn((
                 Node {

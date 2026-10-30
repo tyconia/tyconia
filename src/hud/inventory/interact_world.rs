@@ -26,13 +26,16 @@ fn inventory_interact_world(
     mut inventory: Query<(&mut Inventory, &InventoryActive)>,
     mut building_tilemap: TilemapQueryMut<(With<BuildingTilemap>, Without<FloorTilemap>)>,
 ) {
+    let Ok((inventory, inventory_active)) = inventory.get_single_mut() else {
+        return;
+    };
+
     inter_actions
         .read()
         .for_each(|inter_action| match *inter_action {
             InterAction::Construct => {
                 let (building_tilemap_entity, mut tile_storage, tile_pos) =
                     building_tilemap.cursor_tile_position(&*cursor);
-                let (inventory, inventory_active) = inventory.single_mut();
 
                 inventory_active.0.map(|active| {
                     inventory.0.get(active).map(|inventory_slot| {

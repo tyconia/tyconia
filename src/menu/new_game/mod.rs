@@ -13,11 +13,32 @@ impl Plugin for NewGamePlugin {
         app.add_sub_state::<NewGameTabs>()
             .add_state_scoped_event::<NewGameTabs>(MenuNavState::NewGame)
             .enable_state_scoped_entities::<NewGameTabs>()
-            .add_systems(OnEnter(MenuNavState::NewGame), (setup,))
+            .add_systems(OnEnter(MenuNavState::NewGame), (setup, spawn_new_game))
             .add_systems(OnEnter(NewGameTabs::Scenarios), (scenarios::setup,))
             .add_systems(OnEnter(NewGameTabs::Mods), (mods::setup,))
+            .add_systems(
+                Update,
+                (mods::interact_mods_checkbox,).run_if(in_state(NewGameTabs::Mods)),
+            )
             .add_plugins(TabsPlugin::<NewGameTabs>::new());
     }
+}
+
+#[derive(Component)]
+pub struct NewGame {
+    pub profile: ModProfileConfig,
+}
+
+impl Default for NewGame {
+    fn default() -> Self {
+        Self {
+            profile: ModProfileConfig::default(),
+        }
+    }
+}
+
+pub fn spawn_new_game(mut cmd: Commands) {
+    cmd.spawn((StateScoped(MenuNavState::NewGame), NewGame::default()));
 }
 
 #[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash, Copy, Event)]
@@ -43,6 +64,7 @@ pub(crate) fn spawn_new_game_backdrop(
         NewGameBackdrop,
         Node {
             width: Val::Percent(100.),
+            //flex_direction: FlexDirection::Column,
             ..default()
         },
     ));
@@ -55,7 +77,10 @@ pub(crate) fn setup(
     textures: Res<loading::TextureAssets>,
     ui: Res<loading::UiAssets>,
 ) {
-    let mut parent = cmd.entity(backdrop.single());
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+    let mut parent = cmd.entity(backdrop);
 
     parent.with_children(|mut parent| {
         spawn_window(
@@ -79,7 +104,7 @@ pub(crate) fn setup(
                             flex_basis: Val::Px(100.),
                             flex_grow: 1.0,
                             flex_direction: FlexDirection::Column,
-                            column_gap: Val::Px(UI_SCALE),
+                            row_gap: Val::Px(UI_SCALE),
                             padding: UiRect::axes(Val::Px(UI_SCALE * 2.), Val::Px(UI_SCALE)),
                             ..default()
                         },))
@@ -103,7 +128,6 @@ pub(crate) fn setup(
                                     flex_direction: FlexDirection::Column,
                                     justify_content: JustifyContent::End,
                                     row_gap: Val::Px(UI_SCALE),
-                                    column_gap: Val::Px(UI_SCALE),
                                     ..default()
                                 },))
                                 .with_children(|parent| {
@@ -137,6 +161,7 @@ pub(crate) fn setup(
                             Node {
                                 //height: Val::Px(100.),
                                 //flex_shrink: 2.,
+                                padding: UiRect::axes(Val::Px(UI_SCALE * 2.), Val::Px(0.)),
                                 flex_basis: Val::Px(UI_SCALE * 8.),
                                 height: Val::Px(UI_SCALE * 8.),
                                 ..default()
@@ -151,11 +176,11 @@ pub(crate) fn setup(
                                 })
                                 .with_children(|parent| {
                                     spawn_button(
-                                        ButtonType::LabeledIcon {
+                                        ButtonType::LabeledIconReversed {
                                             text: "Cancel".into(),
                                             icon: ui.cross.clone(),
                                             font_size: UI_SCALE * 2.4,
-                                            image_size: Val::Px(UI_SCALE * 4.),
+                                            image_size: Val::Px(UI_SCALE * 2.),
                                         },
                                         (),
                                         parent,
@@ -171,11 +196,11 @@ pub(crate) fn setup(
                                 })
                                 .with_children(|parent| {
                                     spawn_button(
-                                        ButtonType::LabeledIcon {
+                                        ButtonType::LabeledIconReversed {
                                             text: "Join".into(),
                                             icon: ui.check.clone(),
                                             font_size: UI_SCALE * 2.4,
-                                            image_size: Val::Px(UI_SCALE * 4.),
+                                            image_size: Val::Px(UI_SCALE * 2.),
                                         },
                                         (),
                                         parent,

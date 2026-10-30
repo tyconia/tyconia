@@ -16,7 +16,11 @@ pub fn setup(
 ) {
     let ui_scale_slider = Slider::new(MIN_UI_SCALE..MAX_UI_SCALE, ui_scale.0, usize::MAX);
 
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(backdrop).with_children(|parent| {
         parent
             .spawn((
                 StateScoped(super::SettingsTabsState::Interface),

@@ -35,8 +35,7 @@ impl Plugin for LevelsPlugin {
 
         #[cfg(not(target_arch = "wasm32"))]
         app.register_type::<LevelManager>()
-            .register_type::<ItemId>()
-            .add_plugins(scripts::LevelsScriptingPlugin);
+            .register_type::<ItemId>();
     }
 }
 
@@ -340,100 +339,6 @@ pub fn spawn_level(mut cmd: Commands) {
         LevelLoadStatus::AssetsLoading,
         StateScoped(GameState::Playing),
     ));
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod scripts {
-    use crate::*;
-    use bevy::prelude::*;
-    use bevy_mod_scripting::{
-        core::{
-            bindings::{function::script_function::*, script_value::ScriptValue, *},
-            error::InteropError,
-            handler::event_handler,
-        },
-        rhai::RhaiScriptingPlugin,
-        script_bindings,
-    };
-    use std::sync::Arc;
-    pub struct LevelsScriptingPlugin;
-
-    impl Plugin for LevelsScriptingPlugin {
-        fn build(&self, app: &mut App) {
-            app.add_systems(Startup, register_levels)
-                //.add_systems(
-                //    OnEnter(GameState::Playing),
-                //    (trigger_callback(
-                //        callbacks::OnLevelStart,
-                //        LevelManager { current: 12 },
-                //    ),)
-                //        .after(mods::load_scripts)
-                //        .chain(),
-                //)
-                .register_type::<LevelManager>()
-                .add_systems(
-                    Update,
-                    (
-                        trigger_callback(callbacks::OnLevelStart, LevelManager),
-                        event_handler::<callbacks::OnLevelStart, RhaiScriptingPlugin>,
-                    )
-                        .chain()
-                        .run_if(in_state(GameState::Playing)),
-                );
-        }
-    }
-
-    #[derive(Component, Reflect, Clone)]
-    pub struct LevelManager;
-
-    use bevy::reflect::TypeRegistration;
-
-    #[allow(dead_code)]
-    #[script_bindings(name = "levels")]
-    impl LevelManager {
-        pub fn create(ctx: FunctionCallContext) {
-            info!("Created level");
-        }
-
-        pub fn register(ctx: FunctionCallContext, label: String) -> Result<(), InteropError> {
-            let world = ctx.world()?;
-            let mut lvl_query = ScriptQueryBuilder::default();
-
-            let lvl_manager = world
-                .get_component_id(std::any::TypeId::of::<LevelManager>())?
-                .unwrap();
-
-            let lvl_registration = TypeRegistration::of::<LevelManager>();
-            let lvl_registration = ScriptTypeRegistration::new(Arc::new(lvl_registration));
-            let lvl_component = ScriptComponentRegistration::new(lvl_registration, lvl_manager);
-
-            lvl_query.with_component(lvl_component);
-
-            let ScriptQueryResult { entity, .. } = world.query(lvl_query)?.pop_front().unwrap();
-            let level_manager = world.get_component(entity, lvl_manager)?.unwrap();
-            level_manager.downcast::<LevelManager>(world).unwrap();
-            info!("Registered level {}", label);
-            // stuff are supposed to happen here
-
-            Ok(())
-        }
-    }
-
-    pub mod callbacks {
-        use bevy_mod_scripting::core::callback_labels;
-
-        callback_labels!(
-            OnLevelConfigure => "on_level_configure",
-            OnLevelStart => "on_level_start",
-            OnLevelEnd => "on_level_end"
-        );
-
-        impl Clone for OnLevelStart {
-            fn clone(&self) -> Self {
-                Self
-            }
-        }
-    }
 }
 
 pub mod post_processing {

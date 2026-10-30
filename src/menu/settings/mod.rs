@@ -97,7 +97,10 @@ pub(crate) fn setup(
     fonts: Res<FontAssets>,
     ui: Res<UiAssets>,
 ) {
-    let mut parent = cmd.entity(backdrop.single());
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+    let mut parent = cmd.entity(backdrop);
 
     parent.with_children(|mut parent| {
         spawn_window(
@@ -115,7 +118,6 @@ pub(crate) fn setup(
                         flex_direction: FlexDirection::Column,
                         justify_content: JustifyContent::End,
                         row_gap: Val::Px(UI_SCALE),
-                        column_gap: Val::Px(UI_SCALE),
                         ..default()
                     },))
                     .with_children(|parent| {
@@ -170,7 +172,6 @@ pub(crate) fn setup(
                         ..default()
                     },
                     BorderRadius::all(Val::Px(2.)),
-                    Interaction::Hovered,
                     super::Scrollable,
                     BackgroundColor(Color::srgba_u8(255, 255, 255, 150)),
                 ));
@@ -190,7 +191,10 @@ fn custom_mod_icon(
     for (children, tab) in tabs.iter() {
         if tab.0 == SettingsTabsState::Mods && developer_mode.get().0 {
             // second child is the image node of a LabeledIcon
-            let mut mod_icon = cmd.entity(*children.get(1).unwrap());
+            let Some(child) = children.get(1) else {
+                continue;
+            };
+            let mut mod_icon = cmd.entity(*child);
             mod_icon.insert(ImageNode {
                 image: ui.magic_axe_real_ico.clone(),
                 ..default()

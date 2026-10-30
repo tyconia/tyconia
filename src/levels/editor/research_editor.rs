@@ -30,7 +30,11 @@ pub fn spawn_editor_window(
 ) {
     let pack = crate::levels::pack::base_mod();
 
-    cmd.entity(hud_backdrop.single())
+    let Ok(hud_backdrop) = hud_backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(hud_backdrop)
         .with_children(|mut parent| {
             spawn_window(
                 &mut parent,

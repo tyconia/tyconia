@@ -3,24 +3,9 @@ use crate::ui::*;
 use bevy::ui::widget::NodeImageMode;
 use std::ops::Range;
 
-pub struct RangeSliderPlugin;
-
-impl Plugin for RangeSliderPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                update_range_slider
-                    .run_if(on_event::<CursorMoved>.and(any_with_component::<Slider>)),
-                interact_range_slider.run_if(any_with_component::<Slider>),
-            ),
-        );
-    }
-}
-
-#[derive(Component)]
-/// Marker for active sliders
-pub struct SliderDragged;
+const SLIDER_TRACK_HEIGHT: f32 = 8.0;
+const SLIDER_THUMB_HEIGHT: f32 = 40.0;
+const SLIDER_THUMB_TRAVEL: f32 = 90.0;
 
 #[derive(Component, Debug)]
 /// Textured horizontal range_slider with scroll support
@@ -75,15 +60,15 @@ pub fn labeled_slider<C: Bundle>(
         });
 }
 
-pub fn draw_slider<T: ChildBuild, C: Bundle>(
-    cmd: &mut T,
+pub fn draw_slider<C: Bundle>(
+    cmd: &mut ChildBuilder,
     components: C,
     ui: &Res<UiAssets>,
     slider: Slider,
 ) {
     cmd.spawn((
         Node {
-            height: Val::Px(8.),
+            height: Val::Px(SLIDER_TRACK_HEIGHT),
             width: Val::Percent(40.),
             position_type: PositionType::Relative,
             ..default()
@@ -106,77 +91,52 @@ pub fn draw_slider<T: ChildBuild, C: Bundle>(
             hover: ui.range_slider_thumb_hover.clone(),
         };
 
-        parent.spawn((
-            super::DepressButton::default(),
-            Node {
-                height: Val::Px(40.),
-                aspect_ratio: Some(4. / 3.),
-                position_type: PositionType::Absolute,
-                left: Val::Percent(slider.percentage / 100. * 90.),
-                top: Val::Percent(-200.0), // Position top edge at 50% of parent height
-                ..default()
-            },
-            slider,
-            ImageNode {
-                image: button_skins.normal.clone(),
-                image_mode: BUTTON_IMG_MODE_SLICED,
-                ..default()
-            },
-            button_skins,
-            components,
-        ));
+        parent
+            .spawn((
+                super::DepressButton::default(),
+                Node {
+                    height: Val::Px(SLIDER_THUMB_HEIGHT),
+                    aspect_ratio: Some(4. / 3.),
+                    position_type: PositionType::Absolute,
+                    left: Val::Percent(slider.percentage / 100. * SLIDER_THUMB_TRAVEL),
+                    top: Val::Px(-(SLIDER_THUMB_HEIGHT - SLIDER_TRACK_HEIGHT) / 2.0),
+                    ..default()
+                },
+                slider,
+                ImageNode {
+                    image: button_skins.normal.clone(),
+                    image_mode: BUTTON_IMG_MODE_SLICED,
+                    ..default()
+                },
+                button_skins,
+                components,
+            ))
+            .observe(drag_slider);
     });
 }
 
-pub fn interact_range_slider(
-    mut cmd: Commands,
-    range_slider: Query<
-        (Entity, &super::DepressButton, Option<&SliderDragged>),
-        (Changed<super::DepressButton>, With<Slider>),
-    >,
+fn drag_slider(
+    trigger: Trigger<Pointer<Drag>>,
+    mut sliders: Query<(&mut Slider, &mut Node, &Parent)>,
+    tracks: Query<&ComputedNode>,
 ) {
-    for (slider, depress, dragged) in range_slider.iter() {
-        if depress.held() {
-            info!("slider activated");
-            cmd.entity(slider).insert(SliderDragged);
-        } else {
-            dragged.map(|_| {
-                info!("slider de-activated");
-                cmd.entity(slider).remove::<SliderDragged>();
-            });
-        }
-    }
-}
-
-pub fn update_range_slider(
-    window: Query<&Window, Without<Slider>>,
-    camera: Query<(&Camera, &GlobalTransform), Without<Slider>>,
-    mut slider: Query<(&mut Slider, &mut Node), With<SliderDragged>>,
-    mut cursor: EventReader<CursorMoved>,
-) {
-    let (camera, camera_transform) = camera.single();
-
-    if let Some(Ok(cursor_world)) = window
-        .single()
-        .cursor_position()
-        .and_then(|cur_pos| Some(camera.viewport_to_world_2d(camera_transform, cur_pos)))
-    {
-        if slider.iter().count() == 1 {
-            let (mut slider, mut node) = slider.single_mut();
-            //trace!("Cursor is positioned at {}", cursor_world,);
-
-            let delta = cursor
-                .read()
-                .filter_map(|cm| cm.delta)
-                .fold(0., |acc, delta| acc + delta.x);
-
-            const FACTOR: f32 = 0.4;
-            slider.percentage = slider.percentage as f32 + delta * FACTOR;
-            slider.percentage = slider.percentage.clamp(0., 100.);
-            node.left = Val::Percent(slider.percentage / 100. * 90.);
-        }
+    if trigger.button != PointerButton::Primary {
+        return;
     }
 
-    // always consume event reader
-    cursor.read();
+    let Ok((mut slider, mut node, parent)) = sliders.get_mut(trigger.entity()) else {
+        return;
+    };
+    let Ok(track) = tracks.get(parent.get()) else {
+        return;
+    };
+
+    let travel = track.size().x * track.inverse_scale_factor() * (SLIDER_THUMB_TRAVEL / 100.0);
+    if travel <= 0.0 {
+        return;
+    }
+
+    let delta = trigger.delta.x / travel * 100.0;
+    slider.percentage = (slider.percentage + delta).clamp(0.0, 100.0);
+    node.left = Val::Percent(slider.percentage / 100.0 * SLIDER_THUMB_TRAVEL);
 }

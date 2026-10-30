@@ -1,9 +1,17 @@
 {
   "tyconia::story::ScriptDeclared": (
-    label: "jenney\'s_diner_dank",
+    label: "bois_of_liberty_city",
     actions: [
       SpawnToLevel(
         level_label: "prologue_restaurant_0",
+      ),
+      CameraMove(
+        camera: "main",
+        position: (0.0, 0.0),
+      ),
+      CameraZoom(
+        camera: "main",
+        zoom: 1.0,
       ),
       Move(
         character: "base::pov_player",
@@ -27,11 +35,50 @@
       ),
       Converse(
         character: "bois_of_liberty::frank",
-        content: Prompt(text: "Aye, where you heading to cuh? Got my money?", choices: {"naw, boss I was just preparing you food, come right in": "bois_of_liberty::pleased_frank", "c\' mon frank, we\'ve gone waay back I got the money I just need by the end of the week": "bois_of_liberty::determined_frank"}),
+        content: Prompt(
+          text: "Aye, where you heading to cuh? Got my money?",
+          choices: {
+            "c' mon frank, we've gone waay back I got the money I just need by the end of the week": "bois_of_liberty::determined_frank",
+            "naw, boss I was just preparing you food, come right in": "bois_of_liberty::pleased_frank",
+          },
+        ),
+      ),
+      // Branch based on choice - consequences follow
+      Sequence(
+        actions: [
+          Converse(
+            character: "bois_of_liberty::frank",
+            content: Continue(text: "[CHOICE_IMPACT] Tension shifts with your response..."),
+          ),
+          Parallel(
+            actions: [
+              Move(
+                character: "bois_of_liberty::frank",
+                reposition: (0.5, 1.5),
+              ),
+              CameraMove(
+                camera: "main",
+                position: (0.5, 1.0),
+              ),
+            ],
+          ),
+          Converse(
+            character: "bois_of_liberty::frank",
+            content: Continue(text: "Heh... c'mon inside, we'll talk proper-like. But I ain't forgettin'."),
+          ),
+          Converse(
+            character: "base::pov_player",
+            content: Continue(text: "Appreciate ya Frank. I'll make good on it."),
+          ),
+        ],
       ),
       JumpTo(
         condition: None,
         story_beat_label: "chapter_1",
+        params: {
+          "mood": "frank_deal",
+          "route": "diner_intro",
+        },
       ),
     ],
   ),

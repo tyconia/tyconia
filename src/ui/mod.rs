@@ -9,6 +9,7 @@ mod dropdown;
 mod notification;
 mod prompt;
 mod range_slider;
+mod spacing;
 //mod selection;
 mod system_cursor;
 mod tabs;
@@ -20,8 +21,10 @@ pub use checkbox::*;
 pub use dropdown::*;
 pub use notification::*;
 pub use range_slider::*;
+pub use spacing::*;
 pub use system_cursor::*;
 pub use tabs::*;
+pub use tooltip::*;
 pub use window::*;
 
 use crate::loading::FontAssets;
@@ -41,6 +44,12 @@ impl From<ZIndices> for ZIndex {
     }
 }
 
+impl From<ZIndices> for GlobalZIndex {
+    fn from(value: ZIndices) -> Self {
+        Self(value as i32)
+    }
+}
+
 /// default UI_SCALE
 pub const UI_SCALE: f32 = 8.;
 
@@ -51,9 +60,10 @@ impl Plugin for UiPlugin {
         app.add_plugins((
             button::ButtonPlugin,
             checkbox::CheckboxPlugin,
-            range_slider::RangeSliderPlugin,
+            dropdown::DropdownPlugin,
             window::WindowPlugin,
             notification::NotificationPlugin,
+            tooltip::TooltipPlugin,
             #[cfg(not(target_arch = "wasm32"))]
             system_cursor::SystemCursorPlugin,
             //selection::SelectionPlugin,
@@ -79,12 +89,8 @@ pub const BUTTON_IMG_MODE_SLICED: bevy::ui::widget::NodeImageMode =
             top: 7.,
             bottom: 7.,
         },
-        center_scale_mode: SliceScaleMode::Tile {
-            stretch_value: 1.75,
-        },
-        sides_scale_mode: SliceScaleMode::Tile {
-            stretch_value: 1.75,
-        },
+        center_scale_mode: SliceScaleMode::Tile { stretch_value: 1.6 },
+        sides_scale_mode: SliceScaleMode::Tile { stretch_value: 1.6 },
         max_corner_scale: 3.,
     });
 
@@ -109,6 +115,25 @@ pub fn build_text<'a, T: ChildBuild, F: FnMut(&'a mut T)>(
     fonts: &'a Res<FontAssets>,
     f: F,
 ) {
+}
+
+pub fn line_separator<'a, T: ChildBuild>(cmd: &'a mut T, ui: &Res<crate::loading::UiAssets>) {
+    cmd.spawn((
+        ImageNode {
+            image: ui.button_alpha.clone(),
+            image_mode: bevy::ui::widget::NodeImageMode::Tiled {
+                tile_x: true,
+                tile_y: false,
+                stretch_value: UI_SCALE / 16.,
+            },
+            ..default()
+        },
+        Node {
+            width: Val::Percent(100.),
+            height: Val::Px(UI_SCALE),
+            ..default()
+        },
+    ));
 }
 
 pub fn separator<'a, T: ChildBuild>(cmd: &'a mut T) {
@@ -168,4 +193,5 @@ pub fn body_text<'a>(
 }
 
 #[derive(Debug, Component)]
+#[require(bevy::ui::RelativeCursorPosition)]
 pub struct Scrollable;

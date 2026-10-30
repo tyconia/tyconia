@@ -17,7 +17,11 @@ impl Plugin for ToolBarPlugin {
 }
 
 fn spawn_tool_bar(mut cmd: Commands, backdrop: crate::hud::HUDBackdropQuery) {
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
+
+    cmd.entity(backdrop).with_children(|parent| {
         parent.spawn((
             StateScoped(DeveloperMode(true)),
             StateScoped(GameState::Playing),

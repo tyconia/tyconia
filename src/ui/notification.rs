@@ -16,10 +16,7 @@ impl Plugin for NotificationPlugin {
             .add_systems(OnExit(GameState::Loading), spawn_notification_backdrop)
             .add_systems(
                 Update,
-                (
-                    countdown_notification_timer.run_if(any_with_component::<NotificationTimer>),
-                    interact_notification,
-                )
+                (countdown_notification_timer.run_if(any_with_component::<NotificationTimer>),)
                     .run_if(any_with_component::<Notification>),
             )
             .add_systems(
@@ -48,7 +45,7 @@ pub struct NotificationEvent {
 }
 
 #[derive(Debug, Clone, Component)]
-#[require(Interaction)]
+#[require(Node)]
 pub struct Notification {
     pub level: NotificationLevel,
     pub title: String,
@@ -92,6 +89,11 @@ pub fn handle_notification(
     ui: Res<UiAssets>,
     fonts: Res<FontAssets>,
 ) {
+    let Ok(backdrop) = backdrop.get_single() else {
+        warn!("notification backdrop is missing");
+        return;
+    };
+
     for NotificationEvent {
         notification,
         timer,
@@ -99,7 +101,7 @@ pub fn handle_notification(
     {
         spawn_notification(
             &mut cmd,
-            &backdrop,
+            backdrop,
             notification.clone(),
             timer.clone(),
             &ui,
@@ -111,7 +113,7 @@ pub fn handle_notification(
 pub fn spawn_notification_backdrop(mut cmd: Commands) {
     cmd.spawn((
         NotificationBackdrop,
-        ZIndex::from(super::ZIndices::Notification),
+        GlobalZIndex::from(super::ZIndices::Notification),
         Node {
             width: Val::Vw(25.),
             height: Val::Percent(100.),
@@ -130,14 +132,14 @@ pub fn spawn_notification_backdrop(mut cmd: Commands) {
 // for spawning a notification window
 pub fn spawn_notification(
     cmd: &mut Commands,
-    backdrop: &Query<Entity, With<NotificationBackdrop>>,
+    backdrop: Entity,
 
     notification: Notification,
     timer: Option<Duration>,
     ui: &Res<UiAssets>,
     fonts: &Res<FontAssets>,
 ) {
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    cmd.entity(backdrop).with_children(|parent| {
         let mut parent_cmd = parent.spawn((
             notification.clone(),
             Node {
@@ -147,7 +149,7 @@ pub fn spawn_notification(
                 row_gap: Val::Px(UI_SCALE),
                 position_type: PositionType::Relative,
                 padding: UiRect::axes(Val::Px(UI_SCALE * 2.5), Val::Px(UI_SCALE * 3.)),
-                flex_wrap: FlexWrap::Wrap,
+                //flex_wrap: FlexWrap::Wrap,
                 ..default()
             },
             ImageNode {
@@ -161,17 +163,19 @@ pub fn spawn_notification(
             parent_cmd.insert(NotificationTimer(Timer::new(timer, TimerMode::Once)));
         }
 
-        parent_cmd.with_children(|parent| {
-            parent
-                .spawn(Node {
-                    flex_direction: FlexDirection::Column,
-                    ..default()
-                })
-                .with_children(|parent| {
-                    super::body_text(&notification.title, parent, &fonts);
-                    super::section_text(&notification.description, parent, &fonts);
-                });
-        });
+        parent_cmd
+            .observe(despawn_notification)
+            .with_children(|parent| {
+                parent
+                    .spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        ..default()
+                    })
+                    .with_children(|parent| {
+                        super::body_text(&notification.title, parent, &fonts);
+                        super::section_text(&notification.description, parent, &fonts);
+                    });
+            });
 
         parent_cmd.with_children(|parent| {
             parent.spawn((
@@ -199,20 +203,23 @@ pub fn spawn_notification(
 
 pub fn countdown_notification_timer(
     time: Res<Time>,
-    mut notification_timer: Query<&mut NotificationTimer, Without<NotificationTimerPaused>>,
+    mut cmd: Commands,
+    mut notification_timer: Query<
+        (Entity, &mut NotificationTimer),
+        Without<NotificationTimerPaused>,
+    >,
 ) {
-    for mut notification_timer in notification_timer.iter_mut() {
+    for (entity, mut notification_timer) in notification_timer.iter_mut() {
         notification_timer.0.tick(time.delta());
+
+        if notification_timer.0.finished() {
+            cmd.entity(entity).despawn_recursive();
+        }
     }
 }
 
-pub fn interact_notification(
-    mut cmd: Commands,
-    notifications: Query<(Entity, &Interaction), (With<Notification>, Changed<Interaction>)>,
-) {
-    for (entity, interaction) in notifications.iter() {
-        if *interaction == Interaction::Pressed {
-            cmd.entity(entity).despawn_recursive();
-        }
+fn despawn_notification(trigger: Trigger<Pointer<Click>>, mut cmd: Commands) {
+    if trigger.button == PointerButton::Primary {
+        cmd.entity(trigger.entity()).despawn_recursive();
     }
 }

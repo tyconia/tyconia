@@ -30,13 +30,17 @@ pub fn set_cursor(
 ) {
     let cursor_moved_events = cursor_moved_events.read();
     if cursor_moved_events.len() == 0 {
-        let (transform, cam) = camera.single();
+        let Ok((transform, cam)) = camera.get_single() else {
+            return;
+        };
         if let Ok(pos) = cam.viewport_to_world_2d(transform, *last_moved) {
             *cursor_world_position = CursorWorldPosition(pos);
         }
     } else {
         for cursor_moved in cursor_moved_events {
-            let (transform, cam) = camera.single();
+            let Ok((transform, cam)) = camera.get_single() else {
+                return;
+            };
             if let Ok(pos) = cam.viewport_to_world_2d(transform, cursor_moved.position) {
                 *last_moved = cursor_moved.position;
                 *cursor_world_position = CursorWorldPosition(pos);

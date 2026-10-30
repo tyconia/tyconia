@@ -1,6 +1,7 @@
 //! Textured container for UI elements
 use crate::loading::*;
 use crate::ui::*;
+use crate::ui::spacing::*;
 use bevy::ui::RelativeCursorPosition;
 
 mod adjust;
@@ -17,7 +18,7 @@ impl Plugin for WindowPlugin {
 
 /// Window marker
 #[derive(Debug, Component)]
-#[require(DepressButton, RelativeCursorPosition)]
+#[require(RelativeCursorPosition)]
 pub struct WindowUI;
 
 /// TODO: Add window titles
@@ -58,12 +59,13 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             Node {
                 justify_content: JustifyContent::Start,
                 flex_direction: FlexDirection::Column,
-                column_gap: Val::Px(8.),
+                row_gap: spacing_sm(),
                 height: Val::Px(meta.height),
                 width: Val::Px(meta.width),
                 left: Val::Px(0.),
                 top: Val::Px(0.),
                 position_type: PositionType::Absolute,
+                overflow: Overflow::clip(),
                 ..default()
             },
             ImageNode {
@@ -73,6 +75,9 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
             },
             BackgroundColor(Color::WHITE),
         ))
+        .observe(window_resize_start)
+        .observe(window_resize_drag)
+        .observe(window_resize_end)
         .with_children(|parent| {
             let close_skins = crate::ui::ButtonSkins {
                 normal: ui.close_ico.clone(),
@@ -86,11 +91,10 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
                     WindowTitleBar,
                     // title bar
                     Node {
-                        min_height: Val::Px(crate::ui::UI_SCALE * 6.),
-                        padding: UiRect::all(Val::Px(8.)),
-                        margin: UiRect::all(Val::Px(6.)),
+                        min_height: Val::Px(UI_SCALE * WINDOW_TITLE_BAR_HEIGHT),
+                        padding: rect_all(SPACING_SM),
+                        margin: rect_all(SPACING_SM / 2.0),
                         justify_content: JustifyContent::SpaceBetween,
-
                         ..default()
                     },
                     ImageNode {
@@ -101,6 +105,7 @@ pub fn spawn_window<'a, 'b, C: Bundle, D: Bundle, F: FnMut(&mut ChildBuilder)>(
                     },
                     //BackgroundColor(Color::srgba_u8(200, 200, 200, 255)),
                 ))
+                .observe(window_title_drag)
                 .with_children(|parent| {
                     parent
                         .spawn((

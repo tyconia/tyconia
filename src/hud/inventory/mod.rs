@@ -1,6 +1,7 @@
 use crate::hud::*;
 use crate::loading;
 use crate::ui;
+use crate::ui::{ui_val, Spacing, INVENTORY_SLOT_ASPECT, INVENTORY_SLOT_SIZE};
 use crate::*;
 
 mod interact;
@@ -73,14 +74,17 @@ pub fn repopulate_inventory_slots(
             cmd.entity(entity_slot)
                 .remove::<UpdateInventorySlot>()
                 .with_children(|parent| {
-                    let mut spawn_child = parent.spawn((Node {
-                        height: Val::Px(ui::UI_SCALE * 8.),
-                        aspect_ratio: Some(1.),
-                        position_type: PositionType::Relative,
+                    let mut spawn_child = parent.spawn((
+                        Node {
+                            height: Val::Px(ui::UI_SCALE * 8.),
+                            aspect_ratio: Some(1.),
+                            position_type: PositionType::Relative,
 
-                        overflow: Overflow::clip(),
-                        ..default()
-                    },));
+                            overflow: Overflow::clip(),
+                            ..default()
+                        },
+                        bevy::picking::PickingBehavior::IGNORE,
+                    ));
 
                     //if let Some(quantity) = slot
                     //    .entry
@@ -149,15 +153,22 @@ pub fn spawn_inventory(
     //textures: Res<loading::TextureAssets>,
     inventory_ui_active: Local<Option<Entity>>,
 ) {
-    let (inventory_source, inventory_display, inventory_active) = inventory_source.single();
+    let Ok((inventory_source, inventory_display, inventory_active)) =
+        inventory_source.get_single()
+    else {
+        return;
+    };
+    let Ok(backdrop) = backdrop.get_single() else {
+        return;
+    };
 
-    cmd.entity(backdrop.single()).with_children(|parent| {
+    cmd.entity(backdrop).with_children(|parent| {
         parent
             .spawn((
                 //InventoryUI::default(),
                 StateScoped(EnableInventory::ENABLED),
                 Node {
-                    padding: UiRect::axes(Val::Px(ui::UI_SCALE * 2.), Val::Px(ui::UI_SCALE * 2.)),
+                    padding: Spacing::Md.rect_all(),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     flex_direction: FlexDirection::Row,
@@ -209,8 +220,8 @@ pub fn spawn_inventory(
                                                     active: ui.inventory_slot_active.clone(),
                                                 },
                                                 Node {
-                                                    height: Val::Px(ui::UI_SCALE * 8.),
-                                                    aspect_ratio: Some(17. / 18.),
+                                                    height: ui_val(INVENTORY_SLOT_SIZE),
+                                                    aspect_ratio: Some(INVENTORY_SLOT_ASPECT),
                                                     justify_content: JustifyContent::Center,
                                                     align_items: AlignItems::Center,
                                                     flex_direction: FlexDirection::RowReverse,

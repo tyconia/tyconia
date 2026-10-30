@@ -28,6 +28,23 @@ use bevy::reflect::serde::ReflectDeserializer;
 use serde::de::DeserializeSeed;
 use std::io::Read;
 
+#[cfg(target_arch = "wasm32")]
+pub fn load_mods_from_profile(
+    mut cmd: Commands,
+    profile: Query<(Entity, &ModProfileConfig), With<Level>>,
+    type_registry: Res<AppTypeRegistry>,
+) {
+    let type_registry = type_registry.read();
+    info!("about to load mods!");
+
+    let mut loaded_mods = HashSet::new();
+
+    let (level_entity, profile_config) = profile.single();
+
+    cmd.entity(level_entity).insert(ModProfile(loaded_mods));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn load_mods_from_profile(
     mut cmd: Commands,
     profile: Query<(Entity, &ModProfileConfig), With<Level>>,
@@ -100,7 +117,7 @@ pub fn load_mods_from_profile(
 }
 
 #[derive(Component, Reflect)]
-pub struct ModProfileConfig(pub Vec<MetaShorthand>);
+pub struct ModProfileConfig(pub HashSet<MetaShorthand>);
 
 #[derive(Component, Reflect)]
 pub struct ModProfile(pub HashSet<(ModPack, PathBuf)>);
@@ -119,6 +136,6 @@ impl ModProfile {
 
 impl Default for ModProfileConfig {
     fn default() -> Self {
-        Self(vec!["tyconic_0.0.0-dev".into(), "base_0.0.0-dev".into()])
+        Self(["tyconic_0.0.0-dev".into(), "base_0.0.0-dev".into()].into())
     }
 }
