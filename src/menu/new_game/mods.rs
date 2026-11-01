@@ -8,13 +8,20 @@ pub(crate) fn setup(
     backdrop: NewGameBackdropQuery,
     ui: Res<loading::UiAssets>,
     fonts: Res<loading::FontAssets>,
+    settings: Res<crate::SettingsConfig>,
 ) {
     let Ok(backdrop) = backdrop.get_single() else {
         return;
     };
 
+    let enabled = settings
+        .mods
+        .enabled
+        .iter()
+        .any(|id| id.starts_with("tyconic"));
+
     cmd.entity(backdrop).with_children(|mut parent| {
-        mods_checkbox(&mut parent, &ui, &fonts);
+        mods_checkbox(&mut parent, &ui, &fonts, enabled);
     });
 }
 
@@ -24,6 +31,7 @@ pub(crate) fn mods_checkbox(
     cmd: &mut ChildBuilder,
     ui: &Res<loading::UiAssets>,
     fonts: &Res<loading::FontAssets>,
+    enabled: bool,
 ) {
     cmd.spawn((
         StateScoped(NewGameTabs::Mods),
@@ -42,7 +50,7 @@ pub(crate) fn mods_checkbox(
             })
             .with_children(|parent| {
                 body_text("tyconic".into(), parent, &fonts);
-                section_text("0.1.0-dev".into(), parent, &fonts);
+                section_text("0.0.0-dev".into(), parent, &fonts);
             });
 
         parent
@@ -52,8 +60,12 @@ pub(crate) fn mods_checkbox(
             })
             .with_children(|parent| {
                 spawn_checkbox(
-                    CheckboxState::Inactive,
-                    ModCheckbox(MetaShorthand("tyconic_0.1.0-dev".into())),
+                    if enabled {
+                        CheckboxState::Active
+                    } else {
+                        CheckboxState::Inactive
+                    },
+                    ModCheckbox(MetaShorthand("tyconic_0.0.0-dev".into())),
                     parent,
                     &fonts,
                     &ui,
@@ -67,7 +79,8 @@ pub struct ModCheckbox(pub MetaShorthand);
 
 pub fn interact_mods_checkbox(
     mut new_game: Query<&mut NewGame, Without<CheckboxState>>,
-    checkboxes: Query<(&CheckboxState, &ModCheckbox), Changed<Interaction>>,
+    mut pending: ResMut<PendingModProfile>,
+    checkboxes: Query<(&CheckboxState, &ModCheckbox), Changed<CheckboxState>>,
 ) {
     let Ok(mut new_game) = new_game.get_single_mut() else {
         return;
@@ -79,5 +92,6 @@ pub fn interact_mods_checkbox(
         } else {
             new_game.profile.0.remove(&mod_.0);
         }
+        pending.0 = new_game.profile.clone();
     }
 }

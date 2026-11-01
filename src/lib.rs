@@ -5,9 +5,13 @@ mod levels;
 mod loading;
 mod menu;
 mod player;
+mod save;
+mod settings;
 mod story;
 pub mod ui;
 
+pub use save::*;
+pub use settings::*;
 pub use story::*;
 
 mod mods;
@@ -97,6 +101,8 @@ impl Plugin for GamePlugin {
             .add_systems(OnEnter(GameState::Quit), (quit,))
             .add_plugins((
                 LoadingPlugin,
+                GameSettingsPlugin,
+                SavePlugin,
                 MenuPlugin,
                 hud::HUDPlugin,
                 ActionsPlugin,

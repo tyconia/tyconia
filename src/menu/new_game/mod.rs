@@ -37,8 +37,17 @@ impl Default for NewGame {
     }
 }
 
-pub fn spawn_new_game(mut cmd: Commands) {
-    cmd.spawn((StateScoped(MenuNavState::NewGame), NewGame::default()));
+pub fn spawn_new_game(
+    mut cmd: Commands,
+    settings: Res<SettingsConfig>,
+    mut pending: ResMut<PendingModProfile>,
+) {
+    let mut profile = ModProfileConfig::default();
+    for id in settings.mods.enabled.iter() {
+        profile.0.insert(MetaShorthand(id.clone()));
+    }
+    pending.0 = profile.clone();
+    cmd.spawn((StateScoped(MenuNavState::NewGame), NewGame { profile }));
 }
 
 #[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash, Copy, Event)]
@@ -182,7 +191,7 @@ pub(crate) fn setup(
                                             font_size: UI_SCALE * 2.4,
                                             image_size: Val::Px(UI_SCALE * 2.),
                                         },
-                                        (),
+                                        ChangeStates(MenuNavState::Root),
                                         parent,
                                         &fonts,
                                         &ui,
@@ -202,7 +211,7 @@ pub(crate) fn setup(
                                             font_size: UI_SCALE * 2.4,
                                             image_size: Val::Px(UI_SCALE * 2.),
                                         },
-                                        (),
+                                        ChangeStates(GameState::Playing),
                                         parent,
                                         &fonts,
                                         &ui,

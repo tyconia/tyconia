@@ -53,16 +53,28 @@ pub fn scroll_window(
     }
 }
 
+const RESIZE_EDGE_PX: f32 = 8.0;
+
 fn resize_source(
     relative_cursor_pos: &RelativeCursorPosition,
+    node_size: Vec2,
 ) -> Option<(WindowResizeSource, SystemCursorIcon)> {
     let pos = relative_cursor_pos.normalized?;
-    let threshold = 0.01;
+    let threshold_x = if node_size.x > 0.0 {
+        (RESIZE_EDGE_PX / node_size.x).clamp(0.005, 0.25)
+    } else {
+        0.01
+    };
+    let threshold_y = if node_size.y > 0.0 {
+        (RESIZE_EDGE_PX / node_size.y).clamp(0.005, 0.25)
+    } else {
+        0.01
+    };
     let near_edges = (
-        pos.x < threshold,
-        pos.x > 1.0 - threshold,
-        pos.y < threshold,
-        pos.y > 1.0 - threshold,
+        pos.x < threshold_x,
+        pos.x > 1.0 - threshold_x,
+        pos.y < threshold_y,
+        pos.y > 1.0 - threshold_y,
     );
 
     match near_edges {
@@ -81,7 +93,9 @@ fn resize_source(
         (true, false, false, false) => Some((WindowResizeSource::Left, SystemCursorIcon::WResize)),
         (false, true, false, false) => Some((WindowResizeSource::Right, SystemCursorIcon::EResize)),
         (false, false, true, false) => Some((WindowResizeSource::Top, SystemCursorIcon::NResize)),
-        (false, false, false, true) => Some((WindowResizeSource::Bottom, SystemCursorIcon::SResize)),
+        (false, false, false, true) => {
+            Some((WindowResizeSource::Bottom, SystemCursorIcon::SResize))
+        }
         _ => None,
     }
 }
@@ -89,20 +103,21 @@ fn resize_source(
 pub fn window_resize_start(
     trigger: Trigger<Pointer<Down>>,
     mut commands: Commands,
-    mut windows: Query<(Entity, &RelativeCursorPosition), With<WindowUI>>,
+    mut windows: Query<(Entity, &RelativeCursorPosition, &ComputedNode), With<WindowUI>>,
     #[cfg(not(target_arch = "wasm32"))] mut cursor: CurrentCursorChannel,
 ) {
     if trigger.button != PointerButton::Primary {
         return;
     }
 
-    let Ok((entity, relative_cursor_pos)) = windows.get_mut(trigger.entity()) else {
+    let Ok((entity, relative_cursor_pos, computed_node)) = windows.get_mut(trigger.entity()) else {
         return;
     };
 
     commands.entity(entity).remove::<WindowResize>();
 
-    let Some((source, icon)) = resize_source(relative_cursor_pos) else {
+    let node_size = computed_node.size() * computed_node.inverse_scale_factor();
+    let Some((source, icon)) = resize_source(relative_cursor_pos, node_size) else {
         #[cfg(not(target_arch = "wasm32"))]
         cursor.send(SystemCursorIcon::Default.into());
         return;

@@ -143,6 +143,43 @@ impl ToString for DesktopControl {
     }
 }
 
+/// Identifies a mapping in any of the action maps.
+#[derive(Eq, PartialEq, Hash, Clone, Debug, Copy)]
+pub enum BindableAction {
+    Ui(UiAction),
+    Movement(MovementAction),
+    Inter(InterAction),
+}
+
+impl BindableAction {
+    pub fn entry<'a>(&self, mappings: &'a mut InputMappings) -> Option<&'a mut InputMappingEntry> {
+        match self {
+            Self::Ui(action) => mappings.ui_actions.get_mut(action),
+            Self::Movement(action) => mappings.movement_actions.get_mut(action),
+            Self::Inter(action) => mappings.inter_actions.get_mut(action),
+        }
+    }
+
+    pub fn read<'a>(&self, mappings: &'a InputMappings) -> Option<&'a InputMappingEntry> {
+        match self {
+            Self::Ui(action) => mappings.ui_actions.get(action),
+            Self::Movement(action) => mappings.movement_actions.get(action),
+            Self::Inter(action) => mappings.inter_actions.get(action),
+        }
+    }
+
+    pub fn entry_or_insert<'a>(
+        &self,
+        mappings: &'a mut InputMappings,
+    ) -> &'a mut InputMappingEntry {
+        match self {
+            Self::Ui(action) => mappings.ui_actions.entry(*action).or_default(),
+            Self::Movement(action) => mappings.movement_actions.entry(*action).or_default(),
+            Self::Inter(action) => mappings.inter_actions.entry(*action).or_default(),
+        }
+    }
+}
+
 /// [`Resource`] stores input-actions mappings for configuration
 #[derive(Resource, Reflect, Eq, PartialEq, Default, Clone, Debug, Asset)]
 //#[reflect(from_reflect = false)]

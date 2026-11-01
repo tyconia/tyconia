@@ -3,6 +3,7 @@ use crate::ui::*;
 use crate::{ChangeStates, GameState};
 use bevy::prelude::*;
 
+pub mod credits;
 pub mod load_game;
 pub mod new_game;
 pub mod settings;
@@ -30,22 +31,35 @@ impl Plugin for MenuPlugin {
                 (spawn_camera, spawn_menu_backdrop, spawn_menu_background).chain(),
             )
             .add_systems(OnEnter(MenuNavState::Root), (setup,))
-            // handle menu navigation
             .add_systems(
                 Update,
                 (main_menu_button.run_if(in_state(GameState::Menu)),),
             )
-            // moves background, hopefully prevents jitter
             .add_systems(
                 PreUpdate,
                 move_menu_background.run_if(any_with_component::<MenuBackground>),
             )
-            // settings
-            .add_plugins((settings::SettingsPlugin, new_game::NewGamePlugin));
+            .add_systems(
+                Last,
+                back_track.run_if(in_state(GameState::Menu).and(not(in_state(MenuNavState::Root)))),
+            )
+            .add_plugins((
+                settings::SettingsPlugin,
+                new_game::NewGamePlugin,
+                load_game::LoadGamePlugin,
+                credits::CreditsPlugin,
+            ));
     }
 }
 
-pub fn move_menu_background(mut bg: Query<&mut Node, With<MenuBackground>>, time: Res<Time>) {
+pub fn move_menu_background(
+    mut bg: Query<&mut Node, With<MenuBackground>>,
+    time: Res<Time>,
+    settings: Res<crate::SettingsConfig>,
+) {
+    if settings.interface.reduced_motion {
+        return;
+    }
     let Ok(mut bg) = bg.get_single_mut() else {
         return;
     };
@@ -122,10 +136,14 @@ fn setup(
     fonts: Res<FontAssets>,
     ui: Res<UiAssets>,
     backdrop: Query<Entity, With<MenuBackdrop>>,
+    saves: Res<crate::SaveCatalog>,
+    settings: Res<crate::SettingsConfig>,
 ) {
     let Ok(backdrop) = backdrop.get_single() else {
         return;
     };
+
+    let language = settings.language;
 
     cmd.entity(backdrop).with_children(|parent| {
         parent
@@ -163,20 +181,60 @@ fn setup(
                         BackgroundColor(Color::srgba_u8(255, 255, 255, 20)),
                     ))
                     .with_children(|children| {
-                        for (name, game_state, menu_nav) in &[
-                            //("Continue", Some(GameState::Playing), None),
-                            ("New Game", None, Some(MenuNavState::NewGame)),
-                            //("Load Game", None, Some(MenuNavState::LoadGame)),
-                            ("Editor", Some(GameState::Playing), None),
-                            ("Settings", None, Some(MenuNavState::Settings)),
+                        let continue_available = saves.latest().is_some();
+                        for (name, enabled, game_state, menu_nav) in [
+                            (
+                                language.text("continue").to_string(),
+                                continue_available,
+                                Some(GameState::Playing),
+                                None,
+                            ),
+                            (
+                                language.text("new_game").to_string(),
+                                true,
+                                None,
+                                Some(MenuNavState::NewGame),
+                            ),
+                            (
+                                language.text("load_game").to_string(),
+                                true,
+                                None,
+                                Some(MenuNavState::LoadGame),
+                            ),
+                            (
+                                language.text("multiplayer").to_string(),
+                                false,
+                                None,
+                                Some(MenuNavState::Multiplayer),
+                            ),
+                            (
+                                language.text("settings").to_string(),
+                                true,
+                                None,
+                                Some(MenuNavState::Settings),
+                            ),
+                            (
+                                language.text("credits").to_string(),
+                                true,
+                                None,
+                                Some(MenuNavState::Credits),
+                            ),
                             #[cfg(not(target_arch = "wasm32"))]
-                            ("Quit", Some(GameState::Quit), None),
+                            (
+                                language.text("quit").to_string(),
+                                true,
+                                Some(GameState::Quit),
+                                None,
+                            ),
                         ] {
-                            match (*game_state, *menu_nav) {
+                            if !enabled {
+                                continue;
+                            }
+                            match (game_state, menu_nav) {
                                 (Some(game_state), None) => {
                                     spawn_button(
                                         ButtonType::Menu {
-                                            text: (*name).into(),
+                                            text: name,
                                             font_size: UI_SCALE * 3.,
                                         },
                                         ChangeStates(game_state),
@@ -188,7 +246,7 @@ fn setup(
                                 (None, Some(menu_nav)) => {
                                     spawn_button(
                                         ButtonType::Menu {
-                                            text: (*name).into(),
+                                            text: name,
                                             font_size: UI_SCALE * 3.,
                                         },
                                         ChangeStates(menu_nav),
@@ -249,8 +307,10 @@ pub enum MenuNavState {
     #[default]
     Root,
     NewGame,
-    //LoadGame,
+    LoadGame,
+    Multiplayer,
     Settings,
+    Credits,
 }
 
 fn main_menu_button(
@@ -283,6 +343,22 @@ fn main_menu_button(
             });
         }
     }
+}
+
+pub fn back_track(
+    mut menu_nav_channel: EventWriter<MenuNavState>,
+    key: Res<ButtonInput<KeyCode>>,
+    dropdowns: Query<&Dropdown>,
+    focus: Res<FocusState>,
+) {
+    if !key.just_pressed(KeyCode::Escape)
+        || focus.suspended
+        || focus.escape_consumed
+        || dropdowns.iter().any(|dropdown| dropdown.expanded)
+    {
+        return;
+    }
+    menu_nav_channel.send(MenuNavState::Root);
 }
 
 pub fn handle_menu_nav_events(

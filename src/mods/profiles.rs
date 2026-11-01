@@ -7,21 +7,27 @@ pub struct ModProfilePlugin;
 
 impl Plugin for ModProfilePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<ModPack>().add_systems(
-            OnEnter(GameState::Playing),
-            (init_mod_profile, load_mods_from_profile)
-                .chain()
-                .after(levels::spawn_level),
-        );
+        app.register_type::<ModPack>()
+            .init_resource::<PendingModProfile>()
+            .add_systems(
+                OnEnter(GameState::Playing),
+                (init_mod_profile, load_mods_from_profile)
+                    .chain()
+                    .after(levels::spawn_level),
+            );
     }
 }
 
 use std::fs;
 
-pub fn init_mod_profile(mut cmd: Commands, level: Query<Entity, With<Level>>) {
+pub fn init_mod_profile(
+    mut cmd: Commands,
+    level: Query<Entity, With<Level>>,
+    pending: Res<PendingModProfile>,
+) {
     let level = level.single();
 
-    cmd.entity(level).insert(ModProfileConfig::default());
+    cmd.entity(level).insert(pending.0.clone());
 }
 
 use bevy::reflect::serde::ReflectDeserializer;
@@ -116,8 +122,11 @@ pub fn load_mods_from_profile(
     cmd.entity(level_entity).insert(ModProfile(loaded_mods));
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, Clone, Debug)]
 pub struct ModProfileConfig(pub HashSet<MetaShorthand>);
+
+#[derive(Resource, Reflect, Clone, Debug, Default)]
+pub struct PendingModProfile(pub ModProfileConfig);
 
 #[derive(Component, Reflect)]
 pub struct ModProfile(pub HashSet<(ModPack, PathBuf)>);

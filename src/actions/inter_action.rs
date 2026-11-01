@@ -33,6 +33,10 @@ impl InputAction for InterAction {
     fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry> {
         input_mapping.inter_actions.get(&*self).cloned()
     }
+
+    fn bindable(&self) -> BindableAction {
+        BindableAction::Inter(*self)
+    }
 }
 
 pub(crate) fn dispatch_inter_actions(

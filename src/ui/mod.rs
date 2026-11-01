@@ -6,6 +6,7 @@ use bevy::text::FontSmoothing;
 mod button;
 mod checkbox;
 mod dropdown;
+mod focus;
 mod notification;
 mod prompt;
 mod range_slider;
@@ -19,6 +20,7 @@ mod window;
 pub use button::*;
 pub use checkbox::*;
 pub use dropdown::*;
+pub use focus::*;
 pub use notification::*;
 pub use range_slider::*;
 pub use spacing::*;
@@ -61,6 +63,8 @@ impl Plugin for UiPlugin {
             button::ButtonPlugin,
             checkbox::CheckboxPlugin,
             dropdown::DropdownPlugin,
+            focus::FocusPlugin,
+            range_slider::RangeSliderPlugin,
             window::WindowPlugin,
             notification::NotificationPlugin,
             tooltip::TooltipPlugin,

@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::loading;
+use bevy::ui::GlobalZIndex;
 
 #[derive(Component, Debug)]
 #[require(Node)]
@@ -37,7 +38,9 @@ impl Plugin for DropdownPlugin {
                 dropdown_select_option,
                 dropdown_keyboard_nav,
                 dropdown_close_on_outside_click,
+                dropdown_cleanup_orphans,
             )
+                .chain()
                 .run_if(resource_exists::<loading::UiAssets>)
                 .run_if(resource_exists::<loading::FontAssets>),
         );
@@ -51,6 +54,7 @@ pub fn spawn_dropdown(
     options: &[String],
     placeholder: String,
     selected: Option<usize>,
+    components: impl Bundle,
 ) {
     let display_text = selected
         .and_then(|i| options.get(i).cloned())
@@ -63,12 +67,15 @@ pub fn spawn_dropdown(
             font_size: UI_SCALE * 2.,
             image_size: Val::Px(UI_SCALE * 2.),
         },
-        Dropdown {
-            selected,
-            options: options.to_vec(),
-            expanded: false,
-            placeholder,
-        },
+        (
+            Dropdown {
+                selected,
+                options: options.to_vec(),
+                expanded: false,
+                placeholder,
+            },
+            components,
+        ),
         parent,
         fonts,
         ui,
@@ -77,19 +84,27 @@ pub fn spawn_dropdown(
 
 fn dropdown_toggle(
     mut commands: Commands,
-    mut query: Query<(Entity, &Interaction, &mut Dropdown), (Changed<Interaction>, With<Button>)>,
+    mut opened: Query<
+        (
+            Entity,
+            &Interaction,
+            &mut Dropdown,
+            &GlobalTransform,
+            &ComputedNode,
+        ),
+        (Changed<Interaction>, With<Button>),
+    >,
     existing_lists: Query<(Entity, &DropdownList)>,
     ui: Res<loading::UiAssets>,
     fonts: Res<loading::FontAssets>,
 ) {
-    for (entity, interaction, mut dropdown) in query.iter_mut() {
+    for (entity, interaction, mut dropdown, transform, node) in opened.iter_mut() {
         if *interaction != Interaction::Pressed {
             continue;
         }
 
         dropdown.expanded = !dropdown.expanded;
 
-        // Remove any list that already belongs to this dropdown.
         for (list_entity, list) in existing_lists.iter() {
             if list.owner == entity {
                 commands.entity(list_entity).despawn_recursive();
@@ -97,7 +112,15 @@ fn dropdown_toggle(
         }
 
         if dropdown.expanded {
-            spawn_dropdown_list(entity, &mut commands, &dropdown, &ui, &fonts);
+            spawn_dropdown_list(
+                entity,
+                &mut commands,
+                &dropdown,
+                transform,
+                node,
+                &ui,
+                &fonts,
+            );
         }
     }
 }
@@ -106,74 +129,76 @@ fn spawn_dropdown_list(
     button_entity: Entity,
     commands: &mut Commands,
     dropdown: &Dropdown,
+    transform: &GlobalTransform,
+    node: &ComputedNode,
     ui: &Res<loading::UiAssets>,
     fonts: &Res<loading::FontAssets>,
 ) {
-    commands.entity(button_entity).with_children(|parent| {
-        parent
-            .spawn((
-                DropdownList {
-                    owner: button_entity,
-                },
-                Node {
-                    position_type: PositionType::Absolute,
-                    top: Val::Percent(100.0),
-                    left: Val::Px(0.0),
-                    width: Val::Percent(100.0),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: spacing_xs(),
-                    padding: Spacing::Xs.rect_all(),
-                    max_height: Val::Px(DROPDOWN_MAX_HEIGHT),
-                    overflow: Overflow::clip(),
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.15, 0.15, 0.15, 0.98)),
-                ZIndex::from(ZIndices::Tooltip),
-                ImageNode {
-                    image: ui.button_alpha.clone(),
-                    image_mode: BUTTON_IMG_MODE_SLICED,
-                    ..default()
-                },
-            ))
-            .with_children(|parent| {
-                for (index, option) in dropdown.options.iter().enumerate() {
-                    let is_selected = dropdown.selected == Some(index);
-                    parent
-                        .spawn((
-                            Button,
-                            Interaction::default(),
-                            DropdownOption {
-                                index,
-                                owner: button_entity,
-                            },
-                            Node {
-                                width: Val::Percent(100.0),
-                                padding: UiRect::axes(spacing_sm(), spacing_xs()),
-                                ..default()
-                            },
-                            BackgroundColor(if is_selected {
-                                Color::srgba(0.3, 0.4, 0.6, 1.0)
-                            } else {
-                                Color::NONE
-                            }),
-                        ))
-                        .with_children(|parent| {
-                            body_text(option, parent, fonts);
-                        });
-                }
-            });
-    });
+    let scale = node.inverse_scale_factor();
+    let size = node.size() * scale;
+    let center = transform.translation().truncate() * scale;
+    let left = center.x - size.x * 0.5;
+    let top = center.y + size.y * 0.5;
+
+    commands
+        .spawn((
+            DropdownList {
+                owner: button_entity,
+            },
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(top),
+                left: Val::Px(left),
+                width: Val::Px(size.x.max(120.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: spacing_xs(),
+                padding: Spacing::Xs.rect_all(),
+                max_height: Val::Px(DROPDOWN_MAX_HEIGHT),
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.15, 0.15, 0.15, 0.98)),
+            GlobalZIndex(ZIndices::Tooltip as i32 + 1),
+            ImageNode {
+                image: ui.button_alpha.clone(),
+                image_mode: BUTTON_IMG_MODE_SLICED,
+                ..default()
+            },
+        ))
+        .with_children(|parent| {
+            for (index, option) in dropdown.options.iter().enumerate() {
+                let is_selected = dropdown.selected == Some(index);
+                parent
+                    .spawn((
+                        Button,
+                        Interaction::default(),
+                        DropdownOption {
+                            index,
+                            owner: button_entity,
+                        },
+                        Node {
+                            width: Val::Percent(100.0),
+                            padding: UiRect::axes(spacing_sm(), spacing_xs()),
+                            ..default()
+                        },
+                        BackgroundColor(if is_selected {
+                            Color::srgba(0.3, 0.4, 0.6, 1.0)
+                        } else {
+                            Color::NONE
+                        }),
+                    ))
+                    .with_children(|parent| {
+                        body_text(option, parent, fonts);
+                    });
+            }
+        });
 }
 
 fn dropdown_select_option(
     mut commands: Commands,
-    query: Query<
-        (&Interaction, &DropdownOption),
-        (Changed<Interaction>, With<Button>),
-    >,
-    mut dropdown_query: Query<&mut Dropdown>,
+    query: Query<(&Interaction, &DropdownOption), (Changed<Interaction>, With<Button>)>,
+    mut dropdown_query: Query<(&mut Dropdown, Option<&Children>)>,
     lists: Query<(Entity, &DropdownList)>,
-    children_query: Query<&Children>,
     text_query: Query<(), With<Text>>,
 ) {
     for (interaction, option) in query.iter() {
@@ -181,7 +206,7 @@ fn dropdown_select_option(
             continue;
         }
 
-        let Ok(mut dropdown) = dropdown_query.get_mut(option.owner) else {
+        let Ok((mut dropdown, children)) = dropdown_query.get_mut(option.owner) else {
             continue;
         };
 
@@ -189,19 +214,15 @@ fn dropdown_select_option(
         dropdown.expanded = false;
 
         if let Some(selected_text) = dropdown.options.get(option.index).cloned() {
-            // Update the label text of the owning button without touching the
-            // icon child.
-            if let Ok(children) = children_query.get(option.owner) {
-                for child in children.iter() {
-                    if text_query.get(*child).is_ok() {
-                        commands.entity(*child).insert(Text::new(selected_text.clone()));
-                        break;
-                    }
-                }
-            }
+            refresh_dropdown_label(
+                &mut commands,
+                option.owner,
+                &selected_text,
+                children,
+                &text_query,
+            );
         }
 
-        // Collapse the owning list.
         for (list_entity, list) in lists.iter() {
             if list.owner == option.owner {
                 commands.entity(list_entity).despawn_recursive();
@@ -212,21 +233,46 @@ fn dropdown_select_option(
 
 fn dropdown_keyboard_nav(
     keys: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(Entity, &mut Dropdown), With<Dropdown>>,
     mut commands: Commands,
+    mut dropdowns: Query<(Entity, &mut Dropdown, &GlobalTransform, &ComputedNode)>,
     lists: Query<(Entity, &DropdownList)>,
+    children_query: Query<&Children>,
+    text_query: Query<(), With<Text>>,
+    mut focus: ResMut<FocusState>,
+    ui: Res<loading::UiAssets>,
+    fonts: Res<loading::FontAssets>,
 ) {
-    let mut close_requested = false;
+    if keys.just_pressed(KeyCode::Escape) {
+        for (entity, mut dropdown, _, _) in dropdowns.iter_mut() {
+            if dropdown.expanded {
+                dropdown.expanded = false;
+                focus.escape_consumed = true;
+                remove_owner_lists(entity, &lists, &mut commands);
+            }
+        }
+        return;
+    }
 
-    for (entity, mut dropdown) in query.iter_mut() {
+    for (entity, mut dropdown, transform, node) in dropdowns.iter_mut() {
         if !dropdown.expanded {
+            if focus.current == Some(entity)
+                && (keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space))
+            {
+                dropdown.expanded = true;
+                spawn_dropdown_list(
+                    entity,
+                    &mut commands,
+                    &dropdown,
+                    transform,
+                    node,
+                    &ui,
+                    &fonts,
+                );
+            }
             continue;
         }
 
-        if keys.just_pressed(KeyCode::Escape) {
-            dropdown.expanded = false;
-            close_requested = true;
-        }
+        focus.current = Some(entity);
 
         if keys.just_pressed(KeyCode::ArrowDown) {
             dropdown.selected = match dropdown.selected {
@@ -244,15 +290,20 @@ fn dropdown_keyboard_nav(
             };
         }
 
-        if keys.just_pressed(KeyCode::Enter) {
+        if keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space) {
             dropdown.expanded = false;
-            close_requested = true;
-        }
+            remove_owner_lists(entity, &lists, &mut commands);
 
-        if close_requested {
-            for (list_entity, list) in lists.iter() {
-                if list.owner == entity {
-                    commands.entity(list_entity).despawn_recursive();
+            if let Some(index) = dropdown.selected {
+                if let Some(selected_text) = dropdown.options.get(index).cloned() {
+                    let children = children_query.get(entity).ok();
+                    refresh_dropdown_label(
+                        &mut commands,
+                        entity,
+                        &selected_text,
+                        children,
+                        &text_query,
+                    );
                 }
             }
         }
@@ -260,39 +311,100 @@ fn dropdown_keyboard_nav(
 }
 
 fn dropdown_close_on_outside_click(
-    mouse: Res<ButtonInput<MouseButton>>,
-    mut query: Query<(Entity, &mut Dropdown), With<Dropdown>>,
+    mut presses: EventReader<Pointer<Down>>,
+    mut query: Query<(Entity, &mut Dropdown)>,
+    dropdowns: Query<(), With<Dropdown>>,
     lists: Query<(Entity, &DropdownList)>,
-    pressed: Query<
-        &Interaction,
-        (
-            With<Button>,
-            Without<Dropdown>,
-            Without<DropdownOption>,
-            Changed<Interaction>,
-        ),
-    >,
+    parents: Query<&Parent>,
     mut commands: Commands,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) {
-        return;
+    let mut clicked_outside = false;
+    let mut keep_owner = None;
+    for press in presses.read() {
+        if press.button != PointerButton::Primary {
+            continue;
+        }
+
+        let mut entity = Some(press.target);
+        while let Some(candidate) = entity {
+            if dropdowns.contains(candidate) {
+                keep_owner = Some(candidate);
+                break;
+            }
+            if let Some((_, list)) = lists
+                .iter()
+                .find(|(list_entity, _)| *list_entity == candidate)
+            {
+                keep_owner = Some(list.owner);
+                break;
+            }
+            entity = parents.get(candidate).ok().map(|parent| parent.get());
+        }
+
+        if keep_owner.is_none() {
+            clicked_outside = true;
+            break;
+        }
     }
 
-    let clicked_outside = pressed.iter().any(|i| *i == Interaction::Pressed);
-    if !clicked_outside {
+    if !clicked_outside && keep_owner.is_none() {
         return;
     }
 
     for (entity, mut dropdown) in query.iter_mut() {
-        if !dropdown.expanded {
+        if !dropdown.expanded || keep_owner == Some(entity) {
             continue;
         }
         dropdown.expanded = false;
+        remove_owner_lists(entity, &lists, &mut commands);
+    }
+}
 
-        for (list_entity, list) in lists.iter() {
-            if list.owner == entity {
-                commands.entity(list_entity).despawn_recursive();
-            }
+fn dropdown_cleanup_orphans(
+    mut commands: Commands,
+    lists: Query<(Entity, &DropdownList)>,
+    dropdowns: Query<(), With<Dropdown>>,
+    parents: Query<&InheritedVisibility>,
+) {
+    for (list_entity, list) in lists.iter() {
+        let owner_exists = dropdowns.get(list.owner).is_ok();
+        let owner_visible = parents
+            .get(list.owner)
+            .map(|visibility| visibility.get())
+            .unwrap_or(true);
+        if !owner_exists || !owner_visible {
+            commands.entity(list_entity).despawn_recursive();
+        }
+    }
+}
+
+fn refresh_dropdown_label(
+    commands: &mut Commands,
+    owner: Entity,
+    text: &str,
+    children: Option<&Children>,
+    text_query: &Query<(), With<Text>>,
+) {
+    let Some(children) = children else {
+        return;
+    };
+    for child in children.iter() {
+        if text_query.get(*child).is_ok() {
+            commands.entity(*child).insert(Text::new(text));
+            break;
+        }
+    }
+    let _ = owner;
+}
+
+fn remove_owner_lists(
+    owner: Entity,
+    lists: &Query<(Entity, &DropdownList)>,
+    commands: &mut Commands,
+) {
+    for (list_entity, list) in lists.iter() {
+        if list.owner == owner {
+            commands.entity(list_entity).despawn_recursive();
         }
     }
 }

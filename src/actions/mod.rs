@@ -46,6 +46,8 @@ pub trait InputAction {
     fn display(&self) -> String;
 
     fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry>;
+
+    fn bindable(&self) -> BindableAction;
 }
 
 use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
@@ -58,13 +60,9 @@ pub const DEFAULT_MAPPINGS: &'static str = include_str!("../../assets/config/inp
 // Loads input map
 #[cfg(target_arch = "wasm32")]
 fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings::InputMappings>) {
-    let mut deserializer = ron::de::Deserializer::from_str(&DEFAULT_MAPPINGS).unwrap();
-    let type_registry = type_registry.read();
-    let reflect_deserializer = ReflectDeserializer::new(&type_registry);
-
-    let partial_reflect_value = reflect_deserializer.deserialize(&mut deserializer).unwrap();
-
-    *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
+    if let Some(defaults) = default_input_mappings(&type_registry) {
+        *map = defaults;
+    }
 }
 
 // Loads input map
@@ -109,152 +107,59 @@ fn load_input_map(type_registry: Res<AppTypeRegistry>, mut map: ResMut<mappings:
     *map = mappings::InputMappings::from_reflect(&*partial_reflect_value).unwrap();
 }
 
-fn print_input_map(type_registry: ResMut<AppTypeRegistry>, map: Res<mappings::InputMappings>) {
-    let type_registry = type_registry.read();
+pub fn default_input_mappings(type_registry: &AppTypeRegistry) -> Option<InputMappings> {
+    let mut deserializer = ron::de::Deserializer::from_str(DEFAULT_MAPPINGS).ok()?;
+    let registry = type_registry.read();
+    let reflect_deserializer = ReflectDeserializer::new(&registry);
+    let partial_reflect_value = reflect_deserializer.deserialize(&mut deserializer).ok()?;
+    InputMappings::from_reflect(&*partial_reflect_value)
+}
 
-    let mut map = mappings::InputMappings::default();
-
-    map.ui_actions.insert(
-        ui::UiAction::Menu,
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Escape)],
-            secondary: vec![DesktopControl::Key(KeyCode::KeyP)],
-            ..default()
-        },
-    );
-
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(0),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit1)],
-            ..default()
-        },
-    );
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(1),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit2)],
-            ..default()
-        },
-    );
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(2),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit3)],
-            ..default()
-        },
-    );
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(3),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit4)],
-            ..default()
-        },
-    );
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(4),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit5)],
-            ..default()
-        },
-    );
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(5),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit6)],
-            ..default()
-        },
-    );
-    map.ui_actions.insert(
-        ui::UiAction::HotbarSlot(6),
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::Digit7)],
-            ..default()
-        },
-    );
-
-    map.movement_actions.insert(
-        movement::MovementAction::North,
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::KeyW)],
-            secondary: vec![DesktopControl::Key(KeyCode::ArrowUp)],
-            ..default()
-        },
-    );
-    map.movement_actions.insert(
-        movement::MovementAction::South,
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::KeyS)],
-            secondary: vec![DesktopControl::Key(KeyCode::ArrowDown)],
-            ..default()
-        },
-    );
-    map.movement_actions.insert(
-        movement::MovementAction::East,
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::KeyD)],
-            secondary: vec![DesktopControl::Key(KeyCode::ArrowRight)],
-            ..default()
-        },
-    );
-    map.movement_actions.insert(
-        movement::MovementAction::West,
-        mappings::InputMappingEntry {
-            primary: vec![DesktopControl::Key(KeyCode::KeyA)],
-            secondary: vec![DesktopControl::Key(KeyCode::ArrowLeft)],
-            ..default()
-        },
-    );
-
-    let serializer = ReflectSerializer::new(&map, &type_registry);
+pub fn save_input_map(type_registry: &AppTypeRegistry, map: &InputMappings) {
+    let registry = type_registry.read();
+    let serializer = ReflectSerializer::new(map, &registry);
     let pretty_config = ron::ser::PrettyConfig::default()
         .compact_arrays(true)
         .depth_limit(3);
 
-    let ron = ron::ser::to_string_pretty(&serializer, pretty_config).unwrap();
-
-    let qualifier = env!("PROJECT_QUALIFIER");
-    let organization = env!("PROJECT_ORGANIZATION");
-    let application = env!("PROJECT_APPLICATION");
-    let project_dir = directories::ProjectDirs::from(qualifier, organization, application).unwrap();
-    let config_dir = project_dir.config_dir();
-
-    let file_name = std::path::Path::new("input_mappings.ron");
-    let file_path = config_dir.join(file_name);
-
-    //input_mappings_config
-    match File::create(&file_path) {
-        Ok(mut file) => {
-            if let Err(e) = file.write_all(ron.as_bytes()) {
-                error!(
-                    "Failed to write data to file: {}, path is {}",
-                    e,
-                    file_path.to_string_lossy()
-                );
-            } else {
-                info!("Data successfully written to {}", file_path.display());
-            }
+    let ron = match ron::ser::to_string_pretty(&serializer, pretty_config) {
+        Ok(ron) => ron,
+        Err(error) => {
+            error!("Failed to serialize input mappings: {}", error);
+            return;
         }
-        Err(e) => error!("Failed to create file: {}", e),
+    };
+
+    let Some(project_dir) = directories::ProjectDirs::from(
+        env!("PROJECT_QUALIFIER"),
+        env!("PROJECT_ORGANIZATION"),
+        env!("PROJECT_APPLICATION"),
+    ) else {
+        error!("No valid configuration directory could be found");
+        return;
+    };
+
+    let config_dir = project_dir.config_dir();
+    if let Err(error) = std::fs::create_dir_all(config_dir) {
+        error!("Failed to create configuration directory: {}", error);
+        return;
     }
 
-    match File::open(&file_path) {
+    let file_path = config_dir.join("input_mappings.ron");
+    match File::create(&file_path) {
         Ok(mut file) => {
-            let mut ron = String::new();
-            file.read_to_string(&mut ron).unwrap();
-
-            let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
-            let reflect_deserializer = ReflectDeserializer::new(&type_registry);
-
-            let reflect_value: Box<dyn PartialReflect> =
-                reflect_deserializer.deserialize(&mut deserializer).unwrap();
-
-            info!("Data is {:?}", reflect_value);
+            if let Err(error) = file.write_all(ron.as_bytes()) {
+                error!(
+                    "Failed to write input mappings to {}: {}",
+                    file_path.to_string_lossy(),
+                    error
+                );
+            }
         }
-        Err(e) => error!(
-            "Failed to open file {}, at {}",
-            e,
-            file_path.to_string_lossy()
+        Err(error) => error!(
+            "Failed to create {}: {}",
+            file_path.to_string_lossy(),
+            error
         ),
     }
 }
@@ -288,7 +193,6 @@ pub fn set_movement_actions(
         KeyCode::ArrowRight,
     ];
 
-    // Add new keys to the 'held' set
     for key in KEYS.iter() {
         if keyboard_input.just_pressed(*key) {
             held.insert(*key);
@@ -307,7 +211,6 @@ pub fn set_movement_actions(
         player_movement_action.send(a);
     });
 
-    // Remove keys that were just released
     for key in KEYS.iter() {
         if keyboard_input.just_released(*key) {
             held.remove(&*key);

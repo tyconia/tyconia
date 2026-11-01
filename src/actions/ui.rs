@@ -45,6 +45,10 @@ impl InputAction for UiAction {
     fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry> {
         input_mapping.ui_actions.get(&*self).cloned()
     }
+
+    fn bindable(&self) -> BindableAction {
+        BindableAction::Ui(*self)
+    }
 }
 
 impl UiAction {

@@ -37,6 +37,7 @@ type ButtonQuery<'w, 's> = Query<
         Option<&'static ButtonSkins>,
         Option<&'static mut ImageNode>,
         Option<&'static Children>,
+        Option<&'static super::Disabled>,
     ),
 >;
 
@@ -65,10 +66,15 @@ fn button_pointer_down(
         return;
     }
 
-    let Ok((depress, custom_skin, skins, image, children)) = buttons.get_mut(trigger.entity())
+    let Ok((depress, custom_skin, skins, image, children, disabled)) =
+        buttons.get_mut(trigger.entity())
     else {
         return;
     };
+
+    if disabled.is_some() {
+        return;
+    }
 
     if let Some(mut depress) = depress {
         depress.pressed = true;
@@ -90,9 +96,13 @@ fn button_pointer_click(trigger: Trigger<Pointer<Click>>, mut buttons: ButtonQue
         return;
     }
 
-    let Ok((depress, ..)) = buttons.get_mut(trigger.entity()) else {
+    let Ok((depress, .., disabled)) = buttons.get_mut(trigger.entity()) else {
         return;
     };
+
+    if disabled.is_some() {
+        return;
+    }
 
     if let Some(mut depress) = depress {
         depress.invoked = true;
@@ -109,10 +119,15 @@ fn button_pointer_up(
         return;
     }
 
-    let Ok((depress, custom_skin, skins, image, children)) = buttons.get_mut(trigger.entity())
+    let Ok((depress, custom_skin, skins, image, children, disabled)) =
+        buttons.get_mut(trigger.entity())
     else {
         return;
     };
+
+    if disabled.is_some() {
+        return;
+    }
 
     if let Some(mut depress) = depress {
         depress.pressed = false;
@@ -128,13 +143,14 @@ fn button_pointer_up(
     }
 }
 
-fn button_pointer_over(
-    trigger: Trigger<Pointer<Over>>,
-    mut buttons: ButtonQuery,
-) {
-    let Ok((_, custom_skin, skins, image, _)) = buttons.get_mut(trigger.entity()) else {
+fn button_pointer_over(trigger: Trigger<Pointer<Over>>, mut buttons: ButtonQuery) {
+    let Ok((_, custom_skin, skins, image, _, disabled)) = buttons.get_mut(trigger.entity()) else {
         return;
     };
+
+    if disabled.is_some() {
+        return;
+    }
 
     if custom_skin.is_some() {
         return;
@@ -150,10 +166,15 @@ fn button_pointer_out(
     mut buttons: ButtonQuery,
     mut labels: Query<&mut TextColor, With<ButtonLabel>>,
 ) {
-    let Ok((depress, custom_skin, skins, image, children)) = buttons.get_mut(trigger.entity())
+    let Ok((depress, custom_skin, skins, image, children, disabled)) =
+        buttons.get_mut(trigger.entity())
     else {
         return;
     };
+
+    if disabled.is_some() {
+        return;
+    }
 
     if let Some(mut depress) = depress {
         depress.pressed = false;
@@ -451,5 +472,3 @@ pub fn spawn_button<'a, 'b>(
 
     entity_cmd
 }
-
-

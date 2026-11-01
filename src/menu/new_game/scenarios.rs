@@ -44,6 +44,7 @@ fn scenario_dropdown(
                 ],
                 "Select Scenario".into(),
                 None,
+                (),
             );
         })
         .with_children(|mut parent| {

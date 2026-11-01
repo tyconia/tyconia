@@ -44,6 +44,10 @@ impl InputAction for MovementAction {
     fn desktop_mapping(&self, input_mapping: &Res<InputMappings>) -> Option<InputMappingEntry> {
         input_mapping.movement_actions.get(&*self).cloned()
     }
+
+    fn bindable(&self) -> BindableAction {
+        BindableAction::Movement(*self)
+    }
 }
 
 impl MovementAction {
