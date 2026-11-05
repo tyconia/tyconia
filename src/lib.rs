@@ -109,6 +109,7 @@ impl Plugin for GamePlugin {
                 InternalAudioPlugin,
                 PlayerPlugin,
                 levels::LevelsPlugin,
+                StoryPlugin,
                 ui::UiPlugin,
                 /* stitch_lang::prelude::StitchPlugin, */
             ));

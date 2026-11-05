@@ -1,0 +1,219 @@
+{
+  "tyconia::levels::LevelIsometric": (
+    label: "prologue_restaurant_0",
+    resources: {
+      "money": 200.0,
+    },
+    legend: [],
+    surface: [],
+    scenes: [
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-19-GroundTile-4.png",
+        position: (-409.0, 20.0),
+        scale: 0.5,
+        z: -100.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-20-GroundTile-3.png",
+        position: (409.0, 20.0),
+        scale: 0.5,
+        z: -100.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-32-GroundTile-1.png",
+        position: (-409.0, -35.0),
+        scale: 0.5,
+        z: -99.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-4-GroundTile-7.png",
+        position: (409.0, -35.0),
+        scale: 0.5,
+        z: -99.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-11-Crater-5.png",
+        position: (-300.0, -45.0),
+        scale: 0.12,
+        z: -95.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-12-Crater-4.png",
+        position: (420.0, -60.0),
+        scale: 0.12,
+        z: -95.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-1-Rock-12.png",
+        position: (-480.0, 20.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-5-Rock-10.png",
+        position: (340.0, 10.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-7-Rock-8.png",
+        position: (100.0, 55.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-2-SatelliteDish-1.png",
+        position: (-120.0, 60.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-41-SolarPanel-2.png",
+        position: (560.0, 0.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-11-Lander.png",
+        position: (0.0, 205.0),
+        scale: 0.22,
+        z: -5.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-0-BuildingBlock-2.png",
+        position: (-480.0, 95.0),
+        scale: 0.45,
+        z: -2.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-0-BuildingBlock-2.png",
+        position: (440.0, 95.0),
+        scale: 0.45,
+        z: -2.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-3-Prop-15.png",
+        position: (250.0, -60.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+      (
+        asset: "textures/ting/LunarLandscape_Exports_001-4-Prop-14.png",
+        position: (-260.0, -55.0),
+        scale: 0.5,
+        z: 0.0,
+      ),
+    ],
+    colliders: [
+      // Large foreground rocks and props, aligned to their visual bases.
+      (
+        position: (-480.0, -30.0),
+        half_extents: (90.0, 18.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (340.0, -10.0),
+        half_extents: (45.0, 12.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (100.0, 8.0),
+        half_extents: (42.0, 16.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (-120.0, 35.0),
+        half_extents: (45.0, 10.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (560.0, -32.0),
+        half_extents: (85.0, 12.0),
+        rotation_degrees: -26.565,
+      ),
+      (
+        position: (0.0, 150.0),
+        half_extents: (120.0, 16.0),
+        rotation_degrees: 0.0,
+      ),
+      // Left dome colony.
+      (
+        position: (-680.5, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (-546.8, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (-413.2, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (-279.5, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      // Right dome colony.
+      (
+        position: (239.5, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (373.2, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (506.8, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (640.5, 50.0),
+        half_extents: (52.0, 22.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (250.0, -72.0),
+        half_extents: (35.0, 8.0),
+        rotation_degrees: 0.0,
+      ),
+      (
+        position: (-260.0, -80.0),
+        half_extents: (32.0, 10.0),
+        rotation_degrees: 0.0,
+      ),
+      // Invisible play-area bounds.
+      (
+        position: (-825.0, -10.0),
+        half_extents: (10.0, 120.0),
+        rotation_degrees: 0.0,
+        screen_space: true,
+      ),
+      (
+        position: (825.0, -10.0),
+        half_extents: (10.0, 120.0),
+        rotation_degrees: 0.0,
+        screen_space: true,
+      ),
+      (
+        position: (0.0, 90.0),
+        half_extents: (825.0, 10.0),
+        rotation_degrees: 0.0,
+        screen_space: true,
+      ),
+      (
+        position: (0.0, -110.0),
+        half_extents: (825.0, 10.0),
+        rotation_degrees: 0.0,
+        screen_space: true,
+      ),
+    ],
+    spawn: (0.0, -20.0),
+  ),
+}

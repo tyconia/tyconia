@@ -34,8 +34,11 @@ fn inventory_interact_world(
         .read()
         .for_each(|inter_action| match *inter_action {
             InterAction::Construct => {
-                let (building_tilemap_entity, mut tile_storage, tile_pos) =
-                    building_tilemap.cursor_tile_position(&*cursor);
+                let Some((building_tilemap_entity, mut tile_storage, tile_pos)) =
+                    building_tilemap.cursor_tile_position(&*cursor)
+                else {
+                    return;
+                };
 
                 inventory_active.0.map(|active| {
                     inventory.0.get(active).map(|inventory_slot| {

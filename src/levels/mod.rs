@@ -1,6 +1,8 @@
 mod chunks;
+mod collision;
 mod config;
 mod editor;
+mod level_loader;
 mod logistics;
 mod mini_game;
 mod pack;
@@ -11,8 +13,10 @@ use bevy::utils::HashMap;
 use std::time::*;
 
 pub use chunks::*;
+pub use collision::*;
 pub use config::*;
 pub use editor::*;
+pub use level_loader::*;
 pub use logistics::*;
 pub use mini_game::*;
 pub use pack::*;
@@ -26,12 +30,20 @@ impl Plugin for LevelsPlugin {
             (spawn_level, init_map, spawn_map).chain(),
         )
         .add_plugins((
+            LevelLoaderPlugin,
+            LevelEditorPlugin,
             //ChunkPlugin,
             TransportPlugin,
             ResearchEditorPlugin,
             //ModsMenuPlugin,
             //ToolBarPlugin,
         ));
+
+        #[cfg(debug_assertions)]
+        app.add_systems(
+            Update,
+            draw_obstacle_collider_gizmos.run_if(in_state(GameState::Playing)),
+        );
 
         #[cfg(not(target_arch = "wasm32"))]
         app.register_type::<LevelManager>()
@@ -41,7 +53,7 @@ impl Plugin for LevelsPlugin {
 
 #[derive(Component, Reflect, Default)]
 pub struct LevelManager {
-    pub iso: HashMap<String, LevelIsometric>,
+    pub prefabs: HashMap<String, LevelIsometric>,
 }
 
 #[derive(Component, Reflect)]
@@ -50,12 +62,18 @@ pub struct Level {
     pub total_play_time: Duration,
 }
 
-#[derive(Component, Reflect, Debug)]
+#[derive(Component, Reflect, Debug, Clone)]
 pub struct LevelIsometric {
     pub label: String,
     pub resources: HashMap<String, f32>,
     pub legend: Vec<ItemId>,
     pub surface: Vec<SurfaceDeclared>,
+    #[reflect(default)]
+    pub scenes: Vec<SceneDeclared>,
+    #[reflect(default)]
+    pub colliders: Vec<ColliderDeclared>,
+    #[reflect(default)]
+    pub spawn: Vec2,
 }
 
 use crate::loading::ItemTextureMap;
@@ -171,10 +189,28 @@ impl LevelIsometric {
     }
 }
 
-#[derive(Reflect, Debug)]
+#[derive(Reflect, Debug, Clone)]
 pub struct SurfaceDeclared {
     pub position: Vec2,
     pub content: String,
+}
+
+#[derive(Reflect, Debug, Clone)]
+pub struct SceneDeclared {
+    pub asset: String,
+    pub position: Vec2,
+    pub scale: f32,
+    pub z: f32,
+}
+
+#[derive(Reflect, Debug, Clone)]
+pub struct ColliderDeclared {
+    pub position: Vec2,
+    pub half_extents: Vec2,
+    #[reflect(default)]
+    pub rotation_degrees: f32,
+    #[reflect(default)]
+    pub screen_space: bool,
 }
 
 impl From<(Vec2, String)> for SurfaceDeclared {
@@ -337,6 +373,8 @@ pub fn spawn_level(mut cmd: Commands) {
         Level::default(),
         LevelManager::default(),
         LevelLoadStatus::AssetsLoading,
+        Transform::default(),
+        GlobalTransform::default(),
         StateScoped(GameState::Playing),
     ));
 }
@@ -701,6 +739,9 @@ _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | 
                         .into(),
                 ],
                 resources: map,
+                scenes: vec![],
+                colliders: vec![],
+                spawn: Vec2::ZERO,
             };
 
             let reflect_serializer =

@@ -419,6 +419,8 @@ pub(crate) fn setup(
                     SettingsBackdrop,
                     Node {
                         width: Val::Percent(100.),
+                        flex_grow: 1.0,
+                        min_height: Val::Px(0.0),
                         overflow: Overflow::scroll_y(),
                         flex_direction: FlexDirection::Column,
                         padding: UiRect::all(Val::Px(UI_SCALE)),

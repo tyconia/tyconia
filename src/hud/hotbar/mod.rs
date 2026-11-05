@@ -1,4 +1,4 @@
-use crate::hud::EnableHUD;
+use crate::hud::{EnableHUD, InventoryUISource};
 use crate::*;
 use bevy::prelude::*;
 
@@ -10,20 +10,31 @@ impl Plugin for HotbarPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(EnableHUD::ENABLED),
-            (spawn_hotbar, populate_hotbar_slots)
-                .chain()
-                .after(super::spawn_hud_backdrop),
+            spawn_hotbar.after(super::spawn_hud_backdrop),
         )
         .add_systems(
             Update,
-            (interact_hotbar_slot,).run_if(any_with_component::<HotbarSlot>),
+            (
+                sync_hotbar_slots,
+                repopulate_hotbar_slots,
+                interact_hotbar_slot,
+            )
+                .chain()
+                .run_if(any_with_component::<HotbarSlot>),
         );
     }
 }
 
 #[derive(Debug, Component, Default, Clone)]
 #[require(ui::DepressButton)]
-pub struct HotbarSlot(pub Option<ItemEntry>);
+pub struct HotbarSlot {
+    pub index: usize,
+    pub entry: Option<ItemEntry>,
+    pub selected: bool,
+}
+
+#[derive(Debug, Component, Default, Clone)]
+pub struct UpdateHotbarSlot;
 
 #[derive(Debug, Component, Default, Clone)]
 #[require(ui::DepressButton)]
@@ -39,73 +50,88 @@ pub enum HotbarSlotStatus {
     Working,
 }
 
-pub fn populate_hotbar_slots(
+fn sync_hotbar_slots(
     mut cmd: Commands,
-    hotbar_slot: Query<(Entity, &HotbarSlot), Without<Children>>,
-    textures: Res<loading::TextureAssets>,
+    inventory: Query<(&Inventory, &InventoryActive), With<InventoryUISource>>,
+    mut slots: Query<(Entity, &mut HotbarSlot)>,
+) {
+    let Ok((inventory, active)) = inventory.get_single() else {
+        return;
+    };
+
+    for (entity, mut slot) in slots.iter_mut() {
+        let entry = inventory.0.get(slot.index).cloned().flatten();
+        let selected = active.0 == Some(slot.index);
+
+        if slot.entry != entry || slot.selected != selected {
+            slot.entry = entry;
+            slot.selected = selected;
+            cmd.entity(entity).insert(UpdateHotbarSlot);
+        }
+    }
+}
+
+fn repopulate_hotbar_slots(
+    mut cmd: Commands,
+    slots: Query<(Entity, &HotbarSlot, Option<&Children>), With<UpdateHotbarSlot>>,
     fonts: Res<loading::FontAssets>,
 ) {
-    hotbar_slot.iter().for_each(|(entity, slot)| {
-        cmd.entity(entity).with_children(|parent| {
-            let mut spawn_child = parent.spawn((
-                Node {
-                    height: Val::Px(ui::UI_SCALE * 8.),
-                    aspect_ratio: Some(1.),
-                    position_type: PositionType::Relative,
+    for (entity, slot, children) in slots.iter() {
+        if let Some(children) = children {
+            for child in children.iter() {
+                cmd.entity(*child).despawn_recursive();
+            }
+        }
 
-                    overflow: Overflow::clip(),
-                    ..default()
-                },
-                PickingBehavior::IGNORE,
-            ));
+        cmd.entity(entity)
+            .remove::<UpdateHotbarSlot>()
+            .with_children(|parent| {
+                let Some(entry) = &slot.entry else {
+                    return;
+                };
 
-            //if let Some(quantity) = slot
-            //    .0
-            //    .as_ref()
-            //    .and_then(|item_entry| match item_entry.item.ident.as_str() {
-            //        "inserter" => Some((item_entry.quantity, textures.isometric_inserters.clone())),
-            //        "belt" => Some((item_entry.quantity, textures.isometric_belts.clone())),
-            //        "infinite_io" => Some((item_entry.quantity, textures.infinite_io.clone())),
-            //        "table" => Some((item_entry.quantity, textures.isometric_table.clone())),
-            //        _ => None,
-            //    })
-            //    .and_then(|(quantity, image)| {
-            //        spawn_child.insert(ImageNode {
-            //            image,
-            //            color: if quantity < 1 {
-            //                Color::srgba_u8(255, 255, 255, 100)
-            //            } else {
-            //                Default::default()
-            //            },
-            //            ..default()
-            //        });
-            //
-            //        Some(quantity)
-            //    })
-            //{
-            //    parent.spawn((
-            //        if quantity > 0 {
-            //            Visibility::Visible
-            //        } else {
-            //            Visibility::Hidden
-            //        },
-            //        Node {
-            //            position_type: PositionType::Absolute,
-            //            top: Val::Px(0.),
-            //            left: Val::Px(ui::UI_SCALE * 0.75),
-            //            ..default()
-            //        },
-            //        Text::new(format!("{}", quantity)),
-            //        TextColor::BLACK,
-            //        TextFont {
-            //            font: fonts.jersey.clone(),
-            //            font_size: ui::UI_SCALE * 2.,
-            //            font_smoothing: bevy::text::FontSmoothing::AntiAliased,
-            //        },
-            //    ));
-            //}
-        });
-    });
+                parent
+                    .spawn((
+                        Node {
+                            width: Val::Percent(100.),
+                            height: Val::Percent(100.),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            flex_direction: FlexDirection::Column,
+                            ..default()
+                        },
+                        PickingBehavior::IGNORE,
+                    ))
+                    .with_children(|label| {
+                        let color = if slot.selected {
+                            Color::srgb(1.0, 0.85, 0.3)
+                        } else {
+                            Color::WHITE
+                        };
+
+                        label.spawn((
+                            Text::new(entry.label()),
+                            TextColor(color),
+                            TextFont {
+                                font: fonts.jersey.clone(),
+                                font_size: ui::UI_SCALE * 1.8,
+                                font_smoothing: bevy::text::FontSmoothing::AntiAliased,
+                            },
+                            PickingBehavior::IGNORE,
+                        ));
+                        label.spawn((
+                            Text::new(entry.quantity_label()),
+                            TextColor(color),
+                            TextFont {
+                                font: fonts.jersey.clone(),
+                                font_size: ui::UI_SCALE * 1.8,
+                                font_smoothing: bevy::text::FontSmoothing::AntiAliased,
+                            },
+                            PickingBehavior::IGNORE,
+                        ));
+                    });
+            });
+    }
 }
 
 #[derive(Component)]
@@ -169,18 +195,12 @@ pub fn spawn_hotbar(
 
                             ..Default::default()
                         },
-                        HotbarSlot(Some(ItemEntry {
-                            item: match i {
-                                0 => "inserter",
-                                1 => "belt",
-                                2 => "infinite_io",
-                                3 => "table",
-                                _ => "",
-                            }
-                            .into(),
-
-                            quantity: i,
-                        })),
+                        HotbarSlot {
+                            index: i,
+                            entry: None,
+                            selected: false,
+                        },
+                        UpdateHotbarSlot,
                     ));
                 }
             });
@@ -190,18 +210,16 @@ pub fn spawn_hotbar(
 pub fn item_entry_selection() {}
 
 pub fn interact_hotbar_slot(
-    mut cmd: Commands,
-    hotbar_slot: Query<(&Children, &HotbarSlot, &ui::DepressButton), Changed<ui::DepressButton>>,
+    mut inventory: Query<&mut InventoryActive, With<InventoryUISource>>,
+    hotbar_slot: Query<(&HotbarSlot, &ui::DepressButton), Changed<ui::DepressButton>>,
 ) {
-    for (children, slot, depress) in hotbar_slot.iter() {
+    let Ok(mut active) = inventory.get_single_mut() else {
+        return;
+    };
+
+    for (slot, depress) in hotbar_slot.iter() {
         if depress.invoked() {
-            children.first().map(|child| {
-                cmd.entity(*child)
-                    .entry::<ImageNode>()
-                    .and_modify(|mut img_node| {
-                        img_node.color = Color::srgba_u8(255, 255, 255, 100);
-                    });
-            });
+            active.0 = Some(slot.index);
         }
     }
 }

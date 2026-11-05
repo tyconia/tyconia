@@ -140,8 +140,7 @@ pub fn spawn_checkbox<'a, 'b, C: CycleState>(
         super::spawn_button(
             super::ButtonType::Icon {
                 image: state.icon(&ui),
-                //image_size: Val::Px(super::UI_SCALE * 3.),
-                image_size: Val::Percent(100.),
+                image_size: Val::Px(super::UI_SCALE * 2.),
             },
             (state, components),
             parent,

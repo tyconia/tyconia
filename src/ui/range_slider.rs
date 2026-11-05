@@ -1,5 +1,6 @@
 use crate::loading::*;
 use crate::ui::*;
+use bevy::input::mouse::MouseWheel;
 use bevy::ui::widget::NodeImageMode;
 use bevy::ui::RelativeCursorPosition;
 use std::ops::Range;
@@ -11,7 +12,7 @@ pub struct RangeSliderPlugin;
 
 impl Plugin for RangeSliderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, layout_slider_thumbs);
+        app.add_systems(Update, (slider_mouse_wheel, layout_slider_thumbs));
     }
 }
 
@@ -128,35 +129,38 @@ pub fn draw_slider<C: Bundle>(
         },
     ));
 
-    track.observe(slider_track_click).with_children(|parent| {
-        let button_skins = super::ButtonSkins {
-            active: ui.range_slider_thumb_active.clone(),
-            normal: ui.range_slider_thumb.clone(),
-            hover: ui.range_slider_thumb_hover.clone(),
-        };
+    track
+        .observe(slider_track_click)
+        .observe(slider_track_drag)
+        .with_children(|parent| {
+            let button_skins = super::ButtonSkins {
+                active: ui.range_slider_thumb_active.clone(),
+                normal: ui.range_slider_thumb.clone(),
+                hover: ui.range_slider_thumb_hover.clone(),
+            };
 
-        parent
-            .spawn((
-                super::DepressButton::default(),
-                Node {
-                    height: Val::Px(SLIDER_THUMB_HEIGHT),
-                    aspect_ratio: Some(4. / 3.),
-                    position_type: PositionType::Absolute,
-                    left: Val::Percent(slider.percentage),
-                    top: Val::Px(-(SLIDER_THUMB_HEIGHT - SLIDER_TRACK_HEIGHT) / 2.0),
-                    ..default()
-                },
-                slider,
-                ImageNode {
-                    image: button_skins.normal.clone(),
-                    image_mode: BUTTON_IMG_MODE_SLICED,
-                    ..default()
-                },
-                button_skins,
-                components,
-            ))
-            .observe(drag_slider);
-    });
+            parent
+                .spawn((
+                    super::DepressButton::default(),
+                    Node {
+                        height: Val::Px(SLIDER_THUMB_HEIGHT),
+                        aspect_ratio: Some(4. / 3.),
+                        position_type: PositionType::Absolute,
+                        left: Val::Percent(slider.percentage),
+                        top: Val::Px(-(SLIDER_THUMB_HEIGHT - SLIDER_TRACK_HEIGHT) / 2.0),
+                        ..default()
+                    },
+                    slider,
+                    ImageNode {
+                        image: button_skins.normal.clone(),
+                        image_mode: BUTTON_IMG_MODE_SLICED,
+                        ..default()
+                    },
+                    button_skins,
+                    components,
+                ))
+                .observe(drag_slider);
+        });
 }
 
 fn slider_track_click(
@@ -193,10 +197,66 @@ fn slider_track_click(
     }
 }
 
+fn update_slider_from_pointer(
+    slider: &mut Slider,
+    node: &mut Node,
+    pointer: Vec2,
+    track: &ComputedNode,
+    track_transform: &GlobalTransform,
+    thumb: &ComputedNode,
+) {
+    let scale = track.inverse_scale_factor();
+    let track_center = track_transform.translation().truncate() * scale;
+    let track_size = track.size() * scale;
+    let thumb_size = thumb.size() * scale;
+    let available = (track_size.x - thumb_size.x).max(0.0);
+    if available <= 0.0 {
+        return;
+    }
+
+    let track_left = track_center.x - track_size.x * 0.5;
+    let left = (pointer.x - track_left - thumb_size.x * 0.5).clamp(0.0, available);
+    let percentage = slider.percentage_from_fraction(left / available);
+    info!(
+        "slider drag pointer={pointer:?} center={track_center:?} track={track_size:?} thumb={thumb_size:?} available={available} left={left} pct={percentage}"
+    );
+    if slider.set_percentage(percentage) {
+        node.left = Val::Px(available * slider.percentage / 100.0);
+    }
+}
+
+fn slider_track_drag(
+    trigger: Trigger<Pointer<Drag>>,
+    tracks: Query<(&Children, &ComputedNode, &GlobalTransform)>,
+    mut sliders: Query<(&mut Slider, &mut Node, &ComputedNode)>,
+) {
+    if trigger.button != PointerButton::Primary {
+        return;
+    }
+
+    let Ok((children, track, track_transform)) = tracks.get(trigger.entity()) else {
+        return;
+    };
+
+    for child in children.iter() {
+        let Ok((mut slider, mut node, thumb)) = sliders.get_mut(*child) else {
+            continue;
+        };
+        update_slider_from_pointer(
+            &mut slider,
+            &mut node,
+            trigger.pointer_location.position,
+            track,
+            track_transform,
+            thumb,
+        );
+    }
+}
+
 fn drag_slider(
     trigger: Trigger<Pointer<Drag>>,
     mut sliders: Query<(&mut Slider, &mut Node, &Parent, &ComputedNode)>,
-    tracks: Query<&ComputedNode, With<SliderTrack>>,
+    tracks: Query<(&ComputedNode, &GlobalTransform), With<SliderTrack>>,
 ) {
     if trigger.button != PointerButton::Primary {
         return;
@@ -205,20 +265,50 @@ fn drag_slider(
     let Ok((mut slider, mut node, parent, thumb)) = sliders.get_mut(trigger.entity()) else {
         return;
     };
-    let Ok(track) = tracks.get(parent.get()) else {
+    let Ok((track, track_transform)) = tracks.get(parent.get()) else {
         return;
     };
 
-    let scale = thumb.inverse_scale_factor();
-    let available = (track.size().x - thumb.size().x) * scale;
-    if available <= 0.0 {
-        return;
-    }
+    update_slider_from_pointer(
+        &mut slider,
+        &mut node,
+        trigger.pointer_location.position,
+        track,
+        track_transform,
+        thumb,
+    );
+}
 
-    let delta = trigger.delta.x / available * 100.0;
-    let percentage = slider.percentage + delta;
-    if slider.set_percentage(percentage) {
-        node.left = Val::Percent(slider.percentage);
+fn slider_mouse_wheel(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    tracks: Query<(&RelativeCursorPosition, &Children), With<SliderTrack>>,
+    mut sliders: Query<(&mut Slider, &mut Node)>,
+) {
+    for event in mouse_wheel_events.read() {
+        let direction = event.y.signum();
+        if direction == 0.0 {
+            continue;
+        }
+
+        for (cursor, children) in tracks.iter() {
+            if !cursor.mouse_over() {
+                continue;
+            }
+            for child in children.iter() {
+                let Ok((mut slider, mut node)) = sliders.get_mut(*child) else {
+                    continue;
+                };
+                let increment = if slider.steps > 1 {
+                    100.0 / (slider.steps - 1) as f32
+                } else {
+                    1.0
+                };
+                let percentage = slider.percentage + increment * direction;
+                if slider.set_percentage(percentage) {
+                    node.left = Val::Percent(slider.percentage);
+                }
+            }
+        }
     }
 }
 

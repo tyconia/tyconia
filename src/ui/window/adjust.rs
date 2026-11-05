@@ -38,8 +38,14 @@ pub struct WindowTitleBar;
 pub fn scroll_window(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut query: Query<(&mut ScrollPosition, &RelativeCursorPosition), With<self::Scrollable>>,
+    sliders: Query<&RelativeCursorPosition, With<SliderTrack>>,
 ) {
+    let over_slider = sliders.iter().any(|cursor| cursor.mouse_over());
+
     for event in mouse_wheel_events.read() {
+        if over_slider {
+            continue;
+        }
         for (mut scroll_position, cursor) in query.iter_mut() {
             if cursor.mouse_over() {
                 let scroll_amount = match event.unit {
@@ -47,7 +53,7 @@ pub fn scroll_window(
                     MouseScrollUnit::Pixel => event.y,
                 };
 
-                scroll_position.offset_y += scroll_amount;
+                scroll_position.offset_y -= scroll_amount;
             }
         }
     }

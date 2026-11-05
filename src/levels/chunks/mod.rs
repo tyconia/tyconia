@@ -310,7 +310,7 @@ pub trait CursorTilemap {
     fn cursor_tile_position<'a>(
         &'a self,
         cursor_world_position: &CursorWorldPosition,
-    ) -> (Entity, &'a TileStorage, Option<TilePos>);
+    ) -> Option<(Entity, &'a TileStorage, Option<TilePos>)>;
 }
 
 impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemap
@@ -319,8 +319,12 @@ impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemap
     fn cursor_tile_position(
         &self,
         cursor_world_position: &CursorWorldPosition,
-    ) -> (Entity, &TileStorage, Option<TilePos>) {
-        let (entity, map_size, grid_size, map_type, tile_storage, map_transform) = self.single();
+    ) -> Option<(Entity, &TileStorage, Option<TilePos>)> {
+        let Ok((entity, map_size, grid_size, map_type, tile_storage, map_transform)) =
+            self.get_single()
+        else {
+            return None;
+        };
 
         // Grab the cursor position from the `Res<CursorPos>`
         let cursor_pos: Vec2 = cursor_world_position.0;
@@ -336,7 +340,7 @@ impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemap
 
         let tile_pos = TilePos::from_world_pos(&cursor_in_map_pos, map_size, grid_size, map_type);
 
-        (entity, tile_storage, tile_pos)
+        Some((entity, tile_storage, tile_pos))
     }
 }
 
@@ -344,7 +348,7 @@ pub trait CursorTilemapMut {
     fn cursor_tile_position<'a>(
         &'a mut self,
         cursor_world_position: &CursorWorldPosition,
-    ) -> (Entity, Mut<'a, TileStorage>, Option<TilePos>);
+    ) -> Option<(Entity, Mut<'a, TileStorage>, Option<TilePos>)>;
 }
 
 impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemapMut
@@ -353,9 +357,12 @@ impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemapMut
     fn cursor_tile_position(
         &mut self,
         cursor_world_position: &CursorWorldPosition,
-    ) -> (Entity, Mut<TileStorage>, Option<TilePos>) {
-        let (entity, map_size, grid_size, map_type, tile_storage, map_transform) =
-            self.single_mut();
+    ) -> Option<(Entity, Mut<TileStorage>, Option<TilePos>)> {
+        let Ok((entity, map_size, grid_size, map_type, tile_storage, map_transform)) =
+            self.get_single_mut()
+        else {
+            return None;
+        };
 
         // Grab the cursor position from the `Res<CursorPos>`
         let cursor_pos: Vec2 = cursor_world_position.0;
@@ -371,6 +378,6 @@ impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemapMut
 
         let tile_pos = TilePos::from_world_pos(&cursor_in_map_pos, map_size, grid_size, map_type);
 
-        (entity, tile_storage, tile_pos)
+        Some((entity, tile_storage, tile_pos))
     }
 }

@@ -60,7 +60,6 @@ pub fn repopulate_inventory_slots(
     mut cmd: Commands,
     inventory_slot: Query<(Entity, &InventorySlot, Option<&Children>), With<UpdateInventorySlot>>,
     fonts: Res<loading::FontAssets>,
-    textures: Res<loading::TextureAssets>,
 ) {
     inventory_slot
         .iter()
@@ -74,71 +73,44 @@ pub fn repopulate_inventory_slots(
             cmd.entity(entity_slot)
                 .remove::<UpdateInventorySlot>()
                 .with_children(|parent| {
-                    let mut spawn_child = parent.spawn((
-                        Node {
-                            height: Val::Px(ui::UI_SCALE * 8.),
-                            aspect_ratio: Some(1.),
-                            position_type: PositionType::Relative,
+                    let Some(entry) = &slot.entry else {
+                        return;
+                    };
 
-                            overflow: Overflow::clip(),
-                            ..default()
-                        },
-                        bevy::picking::PickingBehavior::IGNORE,
-                    ));
-
-                    //if let Some(quantity) = slot
-                    //    .entry
-                    //    .as_ref()
-                    //    .and_then(|item_entry| match item_entry.item.ident.as_str() {
-                    //        "auto_arm" => {
-                    //            Some((item_entry.quantity, textures.isometric_inserters.clone()))
-                    //        }
-                    //        "mover_belt" => {
-                    //            Some((item_entry.quantity, textures.isometric_belts.clone()))
-                    //        }
-                    //        "infinite_io" => {
-                    //            Some((item_entry.quantity, textures.infinite_io.clone()))
-                    //        }
-                    //        "table" => {
-                    //            Some((item_entry.quantity, textures.isometric_table.clone()))
-                    //        }
-                    //        _ => None,
-                    //    })
-                    //    .and_then(|(quantity, image)| {
-                    //        spawn_child.insert(ImageNode {
-                    //            image,
-                    //            color: if quantity < 1 {
-                    //                Color::srgba_u8(255, 255, 255, 100)
-                    //            } else {
-                    //                Default::default()
-                    //            },
-                    //            ..default()
-                    //        });
-                    //
-                    //        Some(quantity)
-                    //    })
-                    //{
-                    //    parent.spawn((
-                    //        if quantity > 0 {
-                    //            Visibility::Visible
-                    //        } else {
-                    //            Visibility::Hidden
-                    //        },
-                    //        Node {
-                    //            position_type: PositionType::Absolute,
-                    //            top: Val::Px(ui::UI_SCALE),
-                    //            left: Val::Px(ui::UI_SCALE * 2.),
-                    //            ..default()
-                    //        },
-                    //        Text::new(format!("{}", quantity)),
-                    //        TextColor::BLACK,
-                    //        TextFont {
-                    //            font: fonts.jersey.clone(),
-                    //            font_size: ui::UI_SCALE * 2.,
-                    //            font_smoothing: bevy::text::FontSmoothing::AntiAliased,
-                    //        },
-                    //    ));
-                    //}
+                    parent
+                        .spawn((
+                            Node {
+                                width: Val::Percent(100.),
+                                height: Val::Percent(100.),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                flex_direction: FlexDirection::Column,
+                                ..default()
+                            },
+                            bevy::picking::PickingBehavior::IGNORE,
+                        ))
+                        .with_children(|label| {
+                            label.spawn((
+                                Text::new(entry.label()),
+                                TextColor(Color::WHITE),
+                                TextFont {
+                                    font: fonts.jersey.clone(),
+                                    font_size: ui::UI_SCALE * 1.8,
+                                    font_smoothing: bevy::text::FontSmoothing::AntiAliased,
+                                },
+                                bevy::picking::PickingBehavior::IGNORE,
+                            ));
+                            label.spawn((
+                                Text::new(entry.quantity_label()),
+                                TextColor(Color::WHITE),
+                                TextFont {
+                                    font: fonts.jersey.clone(),
+                                    font_size: ui::UI_SCALE * 1.8,
+                                    font_smoothing: bevy::text::FontSmoothing::AntiAliased,
+                                },
+                                bevy::picking::PickingBehavior::IGNORE,
+                            ));
+                        });
                 });
         });
 }
@@ -153,8 +125,7 @@ pub fn spawn_inventory(
     //textures: Res<loading::TextureAssets>,
     inventory_ui_active: Local<Option<Entity>>,
 ) {
-    let Ok((inventory_source, inventory_display, inventory_active)) =
-        inventory_source.get_single()
+    let Ok((inventory_source, inventory_display, inventory_active)) = inventory_source.get_single()
     else {
         return;
     };

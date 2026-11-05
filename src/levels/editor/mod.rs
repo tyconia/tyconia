@@ -1,3 +1,5 @@
+mod level_editor;
+pub use level_editor::*;
 mod research_editor;
 pub use research_editor::*;
 mod building_editor;

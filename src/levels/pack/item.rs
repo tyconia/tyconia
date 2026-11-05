@@ -21,10 +21,33 @@ impl From<&'static str> for ItemId {
 #[derive(Component, Debug, PartialEq, Clone, Reflect, Eq, Hash)]
 pub struct ItemCategory(pub String);
 
+pub const COLLIDER_ITEM_ID: &str = "collider";
+pub const INFINITE_QUANTITY: usize = usize::MAX;
+
 #[derive(Component, Debug, PartialEq, Clone, Reflect, Eq, Hash)]
 pub struct ItemEntry {
     pub item: ItemId,
     pub quantity: usize,
+}
+
+impl ItemEntry {
+    pub fn label(&self) -> String {
+        match self.item.0.as_str() {
+            COLLIDER_ITEM_ID => "COL".into(),
+            "auto_arm" => "ARM".into(),
+            "mover_belt" => "BELT".into(),
+            "infinite_io" => "IO".into(),
+            item => item.chars().take(4).collect::<String>().to_uppercase(),
+        }
+    }
+
+    pub fn quantity_label(&self) -> String {
+        if self.quantity == INFINITE_QUANTITY {
+            "∞".into()
+        } else {
+            self.quantity.to_string()
+        }
+    }
 }
 
 #[derive(Component, Default, Debug, PartialEq, Clone, Reflect, Eq, Hash)]

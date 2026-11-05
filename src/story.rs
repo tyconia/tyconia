@@ -21,6 +21,7 @@ impl Plugin for StoryPlugin {
             .init_resource::<HeadlessStoryReviewer>()
             .init_resource::<StoryLoader>()
             .init_resource::<StoryBeatRegistry>()
+            .init_resource::<crate::levels::LevelRequests>()
             .add_systems(Startup, load_stories_temp)
             .add_systems(Update, (advance_headless_reviewer, resolve_story_jumps));
     }
@@ -63,8 +64,8 @@ fn load_stories_temp(
                             let reflect_deserializer = bevy::reflect::serde::ReflectDeserializer::new(&registry);
                             match reflect_deserializer.deserialize(&mut deserializer) {
                                 Ok(reflected) => {
-                                    // Try to downcast to ScriptDeclared
-                                    if let Ok(script) = reflected.try_downcast::<ScriptDeclared>() {
+                                    // Try to reflect into ScriptDeclared
+                                    if let Some(script) = ScriptDeclared::from_reflect(&*reflected) {
                                         reviewer.active_scripts.push(ActiveScript {
                                             label: script.label.clone(),
                                             current_action_index: 0,
@@ -138,8 +139,16 @@ pub enum ScriptStatus {
 
 pub fn advance_headless_reviewer(
     mut reviewer: ResMut<HeadlessStoryReviewer>,
+    mut level_requests: ResMut<crate::levels::LevelRequests>,
+    game_state: Option<Res<State<crate::GameState>>>,
     time: Res<Time>,
 ) {
+    if let Some(game_state) = game_state {
+        if *game_state.get() != crate::GameState::Playing {
+            return;
+        }
+    }
+
     let delta = time.delta_secs();
 
     // Collect mutations to apply after iteration to avoid borrow conflicts
@@ -246,7 +255,36 @@ pub fn advance_headless_reviewer(
                 script.step_count += 1;
             }
             ScriptAction::SpawnToLevel { level_label } => {
-                info!("Story '{}' [SPAWN_LEVEL] Loading '{}'", script.label, level_label);
+                info!("Story '{}' [LOAD_LEVEL] Loading prefab '{}'", script.label, level_label);
+                level_requests.0.push(crate::levels::LevelRequest::Load { level_label });
+                script.current_action_index += 1;
+                script.elapsed_in_action = 0.0;
+                script.step_count += 1;
+            }
+            ScriptAction::UnloadLevel { level_label } => {
+                info!("Story '{}' [UNLOAD_LEVEL] Unloading '{}'", script.label, level_label);
+                level_requests.0.push(crate::levels::LevelRequest::Unload { level_label });
+                script.current_action_index += 1;
+                script.elapsed_in_action = 0.0;
+                script.step_count += 1;
+            }
+            ScriptAction::SaveLevel { level_label } => {
+                info!("Story '{}' [SAVE_LEVEL] Saving '{}'", script.label, level_label);
+                level_requests.0.push(crate::levels::LevelRequest::Save { level_label });
+                script.current_action_index += 1;
+                script.elapsed_in_action = 0.0;
+                script.step_count += 1;
+            }
+            ScriptAction::DeleteLevel { level_label } => {
+                info!("Story '{}' [DELETE_LEVEL] Deleting '{}'", script.label, level_label);
+                level_requests.0.push(crate::levels::LevelRequest::Delete { level_label });
+                script.current_action_index += 1;
+                script.elapsed_in_action = 0.0;
+                script.step_count += 1;
+            }
+            ScriptAction::RegenerateLevel { level_label } => {
+                info!("Story '{}' [REGENERATE_LEVEL] Regenerating '{}'", script.label, level_label);
+                level_requests.0.push(crate::levels::LevelRequest::Regenerate { level_label });
                 script.current_action_index += 1;
                 script.elapsed_in_action = 0.0;
                 script.step_count += 1;
@@ -336,9 +374,26 @@ pub struct ScriptDeclared {
 }
 
 #[derive(Reflect, Clone, Debug)]
+#[reflect(no_field_bounds)]
 pub enum ScriptAction {
-    // Loads a level
+    // Loads a level prefab into the world
     SpawnToLevel {
+        level_label: String,
+    },
+    // Unloads a level instance while keeping its prefab in the catalog
+    UnloadLevel {
+        level_label: String,
+    },
+    // Saves the current prefab definition
+    SaveLevel {
+        level_label: String,
+    },
+    // Deletes a level instance and removes its prefab from the catalog
+    DeleteLevel {
+        level_label: String,
+    },
+    // Reloads a level instance from its prefab
+    RegenerateLevel {
         level_label: String,
     },
     // Player movement through story
@@ -372,7 +427,6 @@ pub enum ScriptAction {
     JumpTo {
         condition: Option<crate::ConditionFlag>,
         story_beat_label: String,
-        #[reflect(ignore)]
         params: HashMap<String, String>,
     },
     // Wait for a fixed duration in seconds
@@ -385,12 +439,10 @@ pub enum ScriptAction {
     },
     // Run multiple actions simultaneously
     Parallel {
-        #[reflect(ignore)]
         actions: Vec<ScriptAction>,
     },
     // Run multiple actions in sequence
     Sequence {
-        #[reflect(ignore)]
         actions: Vec<ScriptAction>,
     },
     // move the camera for a cinematic shot
@@ -523,6 +575,20 @@ mod tests {
     use std::io::{Read, Write};
 
     #[test]
+    fn loads_story_from_assets() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(StoryPlugin);
+        app.update();
+
+        let reviewer = app.world().resource::<HeadlessStoryReviewer>();
+        assert!(reviewer
+            .active_scripts
+            .iter()
+            .any(|script| script.label == "bois_of_liberty_city"));
+    }
+
+    #[test]
     fn test_headless_story_reviewer() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
@@ -574,6 +640,46 @@ mod tests {
         // Verify completion
         let reviewer = app.world().resource::<HeadlessStoryReviewer>();
         assert_eq!(reviewer.active_scripts[0].status, ScriptStatus::Completed);
+    }
+
+    #[test]
+    fn story_spawn_action_loads_prefab_instance() {
+        let mut app = App::new();
+        app.add_plugins((
+            MinimalPlugins,
+            bevy::asset::AssetPlugin::default(),
+            bevy::state::app::StatesPlugin,
+        ))
+        .insert_state(crate::GameState::Playing)
+            .init_asset::<Image>()
+            .add_plugins((crate::levels::LevelLoaderPlugin, StoryPlugin));
+
+        app.world_mut()
+            .spawn((crate::levels::Level::default(), crate::levels::LevelManager::default()));
+        app.world_mut()
+            .resource_mut::<HeadlessStoryReviewer>()
+            .active_scripts
+            .push(ActiveScript {
+                label: "load_prologue".into(),
+                current_action_index: 0,
+                status: ScriptStatus::Playing,
+                actions: vec![ScriptAction::SpawnToLevel {
+                    level_label: "prologue_restaurant_0".into(),
+                }],
+                elapsed_in_action: 0.0,
+                step_count: 0,
+                last_choice: None,
+            });
+
+        app.update();
+        app.update();
+
+        let count = app
+            .world_mut()
+            .query_filtered::<Entity, With<crate::levels::LevelInstance>>()
+            .iter(app.world())
+            .count();
+        assert_eq!(count, 1);
     }
 
     #[test]
