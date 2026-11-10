@@ -113,7 +113,6 @@ fn disable_editor(
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EditorTool {
     #[default]
@@ -249,4 +248,3 @@ fn select_editor_item(
 
     active.0 = Some(index);
 }
-

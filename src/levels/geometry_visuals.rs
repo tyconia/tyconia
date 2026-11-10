@@ -14,8 +14,8 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::sprite::AlphaMode2d;
 
 mod mesh;
-use mesh::{build_collider_mesh, build_floor_mesh, build_ramp_mesh, build_stairs_mesh};
 pub use mesh::stair_step_count;
+use mesh::{build_collider_mesh, build_floor_mesh, build_ramp_mesh, build_stairs_mesh};
 
 const CHECKER_TEXTURE_SIZE: u32 = 32;
 const CHECKER_CELL_SIZE: u32 = 8;

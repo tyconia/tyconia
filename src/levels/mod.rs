@@ -28,13 +28,13 @@ pub struct LevelsPlugin;
 impl Plugin for LevelsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), spawn_level)
-        .add_plugins((
-            LevelLoaderPlugin,
-            LevelGeometryVisualsPlugin,
-            LevelEditorPlugin,
-            TransportPlugin,
-            ResearchEditorPlugin,
-        ));
+            .add_plugins((
+                LevelLoaderPlugin,
+                LevelGeometryVisualsPlugin,
+                LevelEditorPlugin,
+                TransportPlugin,
+                ResearchEditorPlugin,
+            ));
 
         #[cfg(debug_assertions)]
         app.add_systems(
@@ -329,7 +329,6 @@ fn legend_to_index(c: char) -> usize {
 }
 
 use bevy_ecs_tilemap::prelude::*;
-
 
 #[derive(Debug, PartialEq)]
 pub enum ValidationError {

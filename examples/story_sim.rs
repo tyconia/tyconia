@@ -95,7 +95,7 @@ fn simulate_story(script: &ScriptDeclared) {
 
     let mut step = 0;
     execute_actions(&script.actions, &mut step, script.actions.len(), 0);
-    
+
     println!("\n═══════════════════════════════════════════");
     println!("Story Simulation Complete!");
     println!("═══════════════════════════════════════════");
@@ -136,19 +136,36 @@ fn execute_actions(actions: &[ScriptAction], step: &mut usize, total: usize, dep
                 thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::CameraLookAt { camera, target } => {
-                println!("{}📷 [CAMERA_LOOKAT] {} looking at {:?}", indent, camera, target);
+                println!(
+                    "{}📷 [CAMERA_LOOKAT] {} looking at {:?}",
+                    indent, camera, target
+                );
                 thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::CameraZoom { camera, zoom } => {
                 println!("{}📷 [CAMERA_ZOOM] {} zoom = {}", indent, camera, zoom);
                 thread::sleep(Duration::from_millis(400));
             }
-            ScriptAction::CameraFade { camera, duration, from, to } => {
-                println!("{}🎬 [CAMERA_FADE] {} {} → {} over {}s", indent, camera, from, to, duration);
+            ScriptAction::CameraFade {
+                camera,
+                duration,
+                from,
+                to,
+            } => {
+                println!(
+                    "{}🎬 [CAMERA_FADE] {} {} → {} over {}s",
+                    indent, camera, from, to, duration
+                );
                 simulate_delay(*duration);
             }
-            ScriptAction::Move { character, reposition } => {
-                println!("{}🚶 [MOVE] {} moves to {:?}", indent, character, reposition);
+            ScriptAction::Move {
+                character,
+                reposition,
+            } => {
+                println!(
+                    "{}🚶 [MOVE] {} moves to {:?}",
+                    indent, character, reposition
+                );
                 simulate_delay(0.6);
             }
             ScriptAction::Converse { character, content } => match content {
@@ -206,7 +223,11 @@ fn execute_actions(actions: &[ScriptAction], step: &mut usize, total: usize, dep
                 thread::sleep(Duration::from_millis(200));
             }
             ScriptAction::Parallel { actions } => {
-                println!("{}⚡ [PARALLEL] {} actions executing simultaneously", indent, actions.len());
+                println!(
+                    "{}⚡ [PARALLEL] {} actions executing simultaneously",
+                    indent,
+                    actions.len()
+                );
                 for (i, a) in actions.iter().enumerate() {
                     println!("{}   ├─ {}: {:?}", indent, i + 1, a);
                 }
@@ -214,37 +235,63 @@ fn execute_actions(actions: &[ScriptAction], step: &mut usize, total: usize, dep
                 thread::sleep(Duration::from_millis(600));
             }
             ScriptAction::Sequence { actions } => {
-                println!("{}🔗 [SEQUENCE] {} actions in sequence", indent, actions.len());
+                println!(
+                    "{}🔗 [SEQUENCE] {} actions in sequence",
+                    indent,
+                    actions.len()
+                );
                 thread::sleep(Duration::from_millis(200));
                 execute_actions(actions, step, *step + actions.len(), depth + 1);
             }
             ScriptAction::ArrowIndications { targets } => {
-                println!("{}➡️  [ARROWS] Showing {} indicator(s)", indent, targets.len());
+                println!(
+                    "{}➡️  [ARROWS] Showing {} indicator(s)",
+                    indent,
+                    targets.len()
+                );
                 for t in targets {
                     println!("{}     → {:?}", indent, t);
                 }
                 thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::HighlightIndications { targets } => {
-                println!("{}✨ [HIGHLIGHT] Highlighting {} tile(s)", indent, targets.len());
+                println!(
+                    "{}✨ [HIGHLIGHT] Highlighting {} tile(s)",
+                    indent,
+                    targets.len()
+                );
                 thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::AlterValue { resource, value } => {
-                println!("{}💰 [ALTER] {} {} {}", indent, resource, if *value >= 0.0 { "+" } else { "" }, value);
+                println!(
+                    "{}💰 [ALTER] {} {} {}",
+                    indent,
+                    resource,
+                    if *value >= 0.0 { "+" } else { "" },
+                    value
+                );
                 thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::AwaitResearch { research_id } => {
                 println!("{}🔬 [AWAIT_RESEARCH] {}", indent, research_id);
                 let chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
                 for i in 0..18 {
-                    print!("\r{}   {} Research in progress...", indent, chars[i % chars.len()]);
+                    print!(
+                        "\r{}   {} Research in progress...",
+                        indent,
+                        chars[i % chars.len()]
+                    );
                     io::stdout().flush().unwrap();
                     thread::sleep(Duration::from_millis(80));
                 }
                 print!("\r{}   ✓ Research unlocked\n", indent);
                 thread::sleep(Duration::from_millis(300));
             }
-            ScriptAction::JumpTo { condition, story_beat_label, .. } => {
+            ScriptAction::JumpTo {
+                condition,
+                story_beat_label,
+                ..
+            } => {
                 if let Some(c) = condition {
                     println!("{}🔀 [JUMP] → '{}' (if {:?})", indent, story_beat_label, c);
                 } else {
@@ -266,7 +313,12 @@ fn simulate_delay(duration: f32) {
     let mut i = 0;
     while start.elapsed().as_millis() < total_ms as u128 {
         let elapsed = start.elapsed().as_millis() as f32 / 1000.0;
-        print!("\r   {} {:.1}s / {:.1}s", chars[i % chars.len()], elapsed, duration);
+        print!(
+            "\r   {} {:.1}s / {:.1}s",
+            chars[i % chars.len()],
+            elapsed,
+            duration
+        );
         io::stdout().flush().unwrap();
         thread::sleep(Duration::from_millis(80));
         i += 1;

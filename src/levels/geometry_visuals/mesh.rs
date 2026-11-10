@@ -532,4 +532,3 @@ fn point_in_triangle(point: Vec2, a: Vec2, b: Vec2, c: Vec2) -> bool {
     let ca = (a - c).perp_dot(point - c);
     (ab >= 0.0 && bc >= 0.0 && ca >= 0.0) || (ab <= 0.0 && bc <= 0.0 && ca <= 0.0)
 }
-

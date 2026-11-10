@@ -247,8 +247,7 @@ fn deconstruct_center_of_solid_rect_preserves_the_hole() {
     let grid = grid();
     let mut colliders = vec![grid.collider_from_cells(IVec2::new(-1, -1), IVec2::new(1, 1))];
 
-    remove_cell_from_colliders(&grid, &mut colliders, IVec2::ZERO)
-        .expect("cell should be removed");
+    remove_cell_from_colliders(&grid, &mut colliders, IVec2::ZERO).expect("cell should be removed");
     let remaining: HashSet<IVec2> = colliders
         .iter()
         .flat_map(|collider| grid.cells_from_collider(collider).unwrap())
@@ -385,9 +384,7 @@ fn access_tool_connects_active_level_to_the_next_and_removes_by_height() {
     assert_eq!(accesses.len(), 1);
     assert_eq!(accesses[0].from_elevation, 0.0);
     assert_eq!(accesses[0].to_elevation, 1.0);
-    assert!(
-        ((accesses[0].to - accesses[0].from).length() - grid.step_u().length()).abs() < 0.01
-    );
+    assert!(((accesses[0].to - accesses[0].from).length() - grid.step_u().length()).abs() < 0.01);
 
     assert_eq!(
         remove_access_at(

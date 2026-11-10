@@ -151,14 +151,22 @@ fn main() {
                 println!("📷 Camera [{}] looking at {:?}", camera, target);
                 thread::sleep(Duration::from_millis(400));
             }
-            ScriptAction::CameraFade { camera, duration, from, to } => {
+            ScriptAction::CameraFade {
+                camera,
+                duration,
+                from,
+                to,
+            } => {
                 println!(
                     "🎬 Camera [{}] fading from {} to {} over {}s",
                     camera, from, to, duration
                 );
                 thread::sleep(Duration::from_millis((duration * 1000.0) as u64));
             }
-            ScriptAction::Move { character, reposition } => {
+            ScriptAction::Move {
+                character,
+                reposition,
+            } => {
                 println!("🚶 {} moves to {:?}", character, reposition);
                 thread::sleep(Duration::from_millis(600));
             }
@@ -176,7 +184,10 @@ fn main() {
                     println!("💬 {}:", character);
                     println!("   \"{}\"", text);
                     println!();
-                    let choices_vec: Vec<(String, String)> = choices.iter().map(|(k,v)| (k.clone(), v.clone())).collect();
+                    let choices_vec: Vec<(String, String)> = choices
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect();
                     for (i, (choice_text, _)) in choices_vec.iter().enumerate() {
                         println!("   {}. {}", i + 1, choice_text);
                     }

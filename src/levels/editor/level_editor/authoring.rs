@@ -217,7 +217,11 @@ pub(super) fn add_floor_cells(
     added
 }
 
-pub(super) fn remove_floor_cell(floors: &mut Vec<FloorDeclared>, cell: IVec2, elevation: f32) -> bool {
+pub(super) fn remove_floor_cell(
+    floors: &mut Vec<FloorDeclared>,
+    cell: IVec2,
+    elevation: f32,
+) -> bool {
     let Some(index) = floors
         .iter()
         .position(|floor| (floor.elevation - elevation).abs() < 0.01)

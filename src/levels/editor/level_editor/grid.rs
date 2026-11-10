@@ -318,7 +318,11 @@ impl IsoGrid {
     }
 }
 
-pub(super) fn choose_next_boundary_edge(previous: IVec2, current: IVec2, candidates: &[IVec2]) -> usize {
+pub(super) fn choose_next_boundary_edge(
+    previous: IVec2,
+    current: IVec2,
+    candidates: &[IVec2],
+) -> usize {
     let incoming = (current - previous).as_vec2();
     let mut best = 0;
     let mut best_angle = f32::INFINITY;
@@ -461,7 +465,10 @@ pub(super) fn remove_cell_from_colliders(
     Some(fragment_count)
 }
 
-pub(super) fn colliders_from_cell_set(grid: &IsoGrid, cells: &HashSet<IVec2>) -> Vec<ColliderDeclared> {
+pub(super) fn colliders_from_cell_set(
+    grid: &IsoGrid,
+    cells: &HashSet<IVec2>,
+) -> Vec<ColliderDeclared> {
     let mut colliders = Vec::new();
 
     for component in connected_cell_components(cells) {
