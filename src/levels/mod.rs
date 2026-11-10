@@ -1,4 +1,3 @@
-mod chunks;
 mod collision;
 mod config;
 mod editor;
@@ -14,7 +13,6 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 use std::time::*;
 
-pub use chunks::*;
 pub use collision::*;
 pub use config::*;
 pub use editor::*;
