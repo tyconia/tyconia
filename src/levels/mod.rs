@@ -27,10 +27,7 @@ pub struct LevelsPlugin;
 
 impl Plugin for LevelsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnEnter(GameState::Playing),
-            (spawn_level, init_map, spawn_map).chain(),
-        )
+        app.add_systems(OnEnter(GameState::Playing), spawn_level)
         .add_plugins((
             LevelLoaderPlugin,
             LevelGeometryVisualsPlugin,
@@ -86,9 +83,6 @@ type RawTile = (TilePos, usize);
 type TexturedTile = (TilePos, Handle<Image>);
 type RawMaps = Vec<(Vec2, (usize, usize), Vec<RawTile>)>;
 type TexturedMaps = Vec<(Vec2, (usize, usize), Vec<TexturedTile>)>;
-
-pub fn init_map(_cmd: Commands, _level: Query<(Entity, &ItemTextureMap), With<Level>>) {}
-pub fn spawn_map(_cmd: Commands, _level: Query<(Entity, &ItemTextureMap), With<Level>>) {}
 
 impl LevelIsometric {
     pub fn generate(
