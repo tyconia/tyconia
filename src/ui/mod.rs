@@ -35,7 +35,6 @@ pub enum ZIndices {
     Notification = 2,
     Window = 3,
     Prompt = 10,
-    Selection = 11,
     Tooltip = 12,
 }
 

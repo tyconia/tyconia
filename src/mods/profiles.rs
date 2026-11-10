@@ -131,14 +131,6 @@ pub struct PendingModProfile(pub ModProfileConfig);
 #[derive(Component, Reflect)]
 pub struct ModProfile(pub HashSet<(ModPack, PathBuf)>);
 
-impl ModProfile {
-    pub fn scenario(&self) -> Option<PathBuf> {
-        self.0.iter().find(|(_, _)| true);
-
-        None
-    }
-}
-
 impl Default for ModProfileConfig {
     fn default() -> Self {
         Self(["tyconic_0.0.0-dev".into(), "base_0.0.0-dev".into()].into())
