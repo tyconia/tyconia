@@ -567,11 +567,7 @@ pub struct ScenarioDeclared {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::*;
-    use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
-    use serde::de::DeserializeSeed;
     use std::fs;
-    use std::io::{Read, Write};
 
     #[test]
     fn loads_story_from_assets() {
