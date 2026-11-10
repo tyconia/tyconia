@@ -43,7 +43,7 @@ fn inventory_interact_world(
                 inventory_active.0.map(|active| {
                     inventory.0.get(active).map(|inventory_slot| {
                         //
-                        if let &Some(ItemEntry { item, quantity }) = &inventory_slot {
+                        if let &Some(ItemEntry { item, quantity: _ }) = &inventory_slot {
                             if let Some(tile_pos) = tile_pos {
                                 let texture_index = match item.0.as_str() {
                                     "auto_arm" => Some(0),

@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 //use bevy::utils::HashMap;
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
-use crate::*;
 
 /// Allows an item to be built on the map.
 #[derive(Component, Debug, PartialEq, Clone, Reflect, Eq, Hash)]

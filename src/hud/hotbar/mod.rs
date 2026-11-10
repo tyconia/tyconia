@@ -143,7 +143,7 @@ pub fn spawn_hotbar(
     mut cmd: Commands,
     backdrop: super::HUDBackdropQuery,
     ui: Res<loading::UiAssets>,
-    textures: Res<loading::TextureAssets>,
+    _textures: Res<loading::TextureAssets>,
 ) {
     let Ok(backdrop) = backdrop.get_single() else {
         return;
@@ -172,7 +172,7 @@ pub fn spawn_hotbar(
             ))
             .with_children(|parent| {
                 for i in 0..9 {
-                    let entity_cmd = parent.spawn((
+                    let _entity_cmd = parent.spawn((
                         ui::DepressButton::default(),
                         ui::ButtonSkins {
                             active: ui.inventory_slot_active.clone(),

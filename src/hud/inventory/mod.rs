@@ -123,7 +123,7 @@ pub fn spawn_inventory(
     inventory_source: Query<(&Inventory, &InventoryUISource, Option<&InventoryActive>)>,
     ui: Res<loading::UiAssets>,
     //textures: Res<loading::TextureAssets>,
-    inventory_ui_active: Local<Option<Entity>>,
+    _inventory_ui_active: Local<Option<Entity>>,
 ) {
     let Ok((inventory_source, inventory_display, inventory_active)) = inventory_source.get_single()
     else {
@@ -183,7 +183,7 @@ pub fn spawn_inventory(
                                                     active.0.map_or(false, |active| active == index)
                                                 });
 
-                                            let entity_cmd = parent.spawn((
+                                            let _entity_cmd = parent.spawn((
                                                 ui::DepressButton::default(),
                                                 ui::ButtonSkins {
                                                     hover: ui.inventory_slot_hover.clone(),

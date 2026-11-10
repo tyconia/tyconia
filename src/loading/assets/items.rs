@@ -218,7 +218,7 @@ pub fn loading_item_asset_map(
 }
 
 mod tests {
-    use super::*;
+    
 
     #[test]
     fn write_asset_map() {

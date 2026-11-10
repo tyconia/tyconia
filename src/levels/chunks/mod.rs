@@ -97,7 +97,7 @@ pub type FloorTilemapQuery<'a, 'b, 'c> =
 
 fn render_countertops(
     mut cmd: Commands,
-    textures: Res<TextureAssets>,
+    _textures: Res<TextureAssets>,
     item_map: Query<&crate::loading::ItemTextureMap, With<crate::Level>>,
 ) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
@@ -112,14 +112,14 @@ fn render_countertops(
         y: QUADRANT_SIDE_LENGTH * 2,
     };
 
-    let filled_sized = TilemapSize {
+    let _filled_sized = TilemapSize {
         x: QUADRANT_SIDE_LENGTH,
         y: QUADRANT_SIDE_LENGTH,
     };
 
     let mut floor_storage = TileStorage::empty(map_size);
     let tilemap_entity = cmd.spawn_empty().id();
-    let tilemap_id = TilemapId(tilemap_entity);
+    let _tilemap_id = TilemapId(tilemap_entity);
 
     for x in 18..20 {
         for y in 0..20 {
@@ -205,7 +205,7 @@ pub struct OriginalColor(pub TileColor);
 
 fn render_floors(
     mut cmd: Commands,
-    textures: Res<TextureAssets>,
+    _textures: Res<TextureAssets>,
     item_map: Query<&crate::loading::ItemTextureMap, With<crate::Level>>,
 ) {
     const QUADRANT_SIDE_LENGTH: u32 = 32;
@@ -227,8 +227,8 @@ fn render_floors(
                 let color = {
                     /// Size of Tile on a checkerboard pattern
                     const FLOOR_TILE_SIZE: u32 = 2;
-                    let tile_x = x / FLOOR_TILE_SIZE;
-                    let tile_y = y / FLOOR_TILE_SIZE;
+                    let _tile_x = x / FLOOR_TILE_SIZE;
+                    let _tile_y = y / FLOOR_TILE_SIZE;
                     //if (tile_x + tile_y) % 2 == 0 {
                     //    TileColor(Color::srgba_u8(100, 100, 100, 250))
                     //} else {
@@ -357,7 +357,7 @@ impl<'a, 'b, 'c, TilemapFilter: bevy::ecs::query::QueryFilter> CursorTilemapMut
     fn cursor_tile_position(
         &mut self,
         cursor_world_position: &CursorWorldPosition,
-    ) -> Option<(Entity, Mut<TileStorage>, Option<TilePos>)> {
+    ) -> Option<(Entity, Mut<'_, TileStorage>, Option<TilePos>)> {
         let Ok((entity, map_size, grid_size, map_type, tile_storage, map_transform)) =
             self.get_single_mut()
         else {

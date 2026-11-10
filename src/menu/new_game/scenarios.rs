@@ -1,6 +1,5 @@
 use super::*;
 use crate::loading;
-use bevy::prelude::*;
 
 pub(crate) fn setup(
     mut cmd: Commands,

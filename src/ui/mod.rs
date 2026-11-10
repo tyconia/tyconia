@@ -114,10 +114,10 @@ pub const NODE_IMG_MODE_SLICED: bevy::ui::widget::NodeImageMode =
     });
 
 pub fn build_text<'a, T: ChildBuild, F: FnMut(&'a mut T)>(
-    text: &'a str,
-    cmd: &'a mut T,
-    fonts: &'a Res<FontAssets>,
-    f: F,
+    _text: &'a str,
+    _cmd: &'a mut T,
+    _fonts: &'a Res<FontAssets>,
+    _f: F,
 ) {
 }
 

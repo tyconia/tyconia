@@ -1,7 +1,6 @@
 use crate::menu::*;
 use crate::ui::WindowMeta;
 use crate::*;
-use bevy::prelude::*;
 
 mod mods;
 mod scenarios;
@@ -65,8 +64,8 @@ pub struct NewGameBackdrop;
 
 pub(crate) fn spawn_new_game_backdrop(
     parent: &mut ChildBuilder,
-    ui: &Res<loading::UiAssets>,
-    fonts: &Res<loading::FontAssets>,
+    _ui: &Res<loading::UiAssets>,
+    _fonts: &Res<loading::FontAssets>,
 ) {
     parent.spawn((
         Scrollable,

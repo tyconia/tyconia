@@ -357,7 +357,7 @@ fn update_ranked_visuals(
             Visibility::Visible
         };
 
-        if let Some(mut material) = material {
+        if let Some(material) = material {
             if let Some(material) = color_materials.get_mut(&material.0) {
                 material.color = material.color.with_alpha(alpha);
                 material.alpha_mode = if alpha >= 1.0 - FADE_EPSILON {

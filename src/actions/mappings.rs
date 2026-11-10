@@ -48,7 +48,7 @@ impl InputMappingEntry {
     pub fn just_pressed<T>(
         &self,
         action: T,
-        (mouse_button, key_button, mouse_scroll): (
+        (mouse_button, key_button, _mouse_scroll): (
             &MouseButtonResource,
             &KeyButtonResource,
             &MouseScrollEvent,
@@ -96,11 +96,11 @@ impl InputMappingEntry {
         None
     }
 
-    pub fn just_released<T>(&self, action: T) -> Option<T> {
+    pub fn just_released<T>(&self, _action: T) -> Option<T> {
         unimplemented!()
     }
 
-    pub fn pressed<T>(&self, action: T) -> Option<T> {
+    pub fn pressed<T>(&self, _action: T) -> Option<T> {
         unimplemented!()
     }
 }

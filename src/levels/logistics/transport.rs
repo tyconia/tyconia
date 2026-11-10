@@ -4,7 +4,7 @@ use bevy::prelude::*;
 pub struct TransportPlugin;
 
 impl Plugin for TransportPlugin {
-    fn build(&self, app: &mut App) {
+    fn build(&self, _app: &mut App) {
         //app.add_systems(
         //    Update,
         //    (initiate_transfer,).run_if(in_state(InGameState::Normal)),
@@ -64,10 +64,10 @@ pub enum Transport {
     Requester,
 }
 
-pub fn handle_transport(trigger: Trigger<Transport>) {}
+pub fn handle_transport(_trigger: Trigger<Transport>) {}
 
 pub fn observers(mut cmd: Commands) {
     let entity_1 = cmd.spawn_empty().id();
 
-    let entity_2 = cmd.spawn(Observer::new(handle_transport).with_entity(entity_1));
+    let _entity_2 = cmd.spawn(Observer::new(handle_transport).with_entity(entity_1));
 }

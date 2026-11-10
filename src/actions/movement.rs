@@ -102,7 +102,7 @@ impl From<&MovementAction> for Vec2 {
 pub(crate) fn dispatch_movement_actions(
     mut movement_actions_event: EventWriter<MovementAction>,
     input_mappings: Res<InputMappings>,
-    mouse_scroll: MouseScrollEvent,
+    _mouse_scroll: MouseScrollEvent,
     mouse_button: MouseButtonResource,
     key_button: KeyButtonResource,
 

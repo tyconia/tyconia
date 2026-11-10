@@ -1,7 +1,4 @@
 use bevy::prelude::*;
-use bevy::utils::HashMap;
-use bevy_asset_loader::asset_collection::AssetCollection;
-use std::path::PathBuf;
 
 /// Represents an item.
 /// Item unlock/lock depends on available recipes

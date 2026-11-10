@@ -92,8 +92,8 @@ type TexturedTile = (TilePos, Handle<Image>);
 type RawMaps = Vec<(Vec2, (usize, usize), Vec<RawTile>)>;
 type TexturedMaps = Vec<(Vec2, (usize, usize), Vec<TexturedTile>)>;
 
-pub fn init_map(mut cmd: Commands, level: Query<(Entity, &ItemTextureMap), With<Level>>) {}
-pub fn spawn_map(mut cmd: Commands, level: Query<(Entity, &ItemTextureMap), With<Level>>) {}
+pub fn init_map(_cmd: Commands, _level: Query<(Entity, &ItemTextureMap), With<Level>>) {}
+pub fn spawn_map(_cmd: Commands, _level: Query<(Entity, &ItemTextureMap), With<Level>>) {}
 
 impl LevelIsometric {
     pub fn generate(
@@ -341,7 +341,6 @@ fn legend_to_index(c: char) -> usize {
 
 use bevy_ecs_tilemap::prelude::*;
 
-use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum ValidationError {

@@ -4,7 +4,6 @@
 
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use std::ops::Range;
 
 pub struct SurfacesPlugin;
 

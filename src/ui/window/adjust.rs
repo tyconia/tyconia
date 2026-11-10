@@ -1,4 +1,3 @@
-use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 use bevy::window::SystemCursorIcon;
 

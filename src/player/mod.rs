@@ -1,6 +1,5 @@
 use crate::actions::{cursors::CursorWorldPosition, movement::MovementAction, ui::UiAction};
 use crate::levels::*;
-use crate::ui::*;
 use crate::GameState;
 use bevy::prelude::*;
 

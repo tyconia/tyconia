@@ -50,7 +50,7 @@ pub fn spawn_editor_window(
                     400.,
                     9. / 16.,
                 ),
-                |parent| {},
+                |_parent| {},
             );
         });
 }
