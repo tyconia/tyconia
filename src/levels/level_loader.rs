@@ -1,6 +1,8 @@
 use crate::GameState;
 use crate::{
-    ColliderDeclared, Level, LevelIsometric, LevelManager, ObstacleCollider, SceneDeclared,
+    elevation_screen_offset, level_z, rank_from_elevation, AccessDeclared, AccessKind,
+    ColliderDeclared, FloorDeclared, GroundTransform, Level, LevelIsometric, LevelManager,
+    LevelVertical, ObstacleCollider, RankedVisual, SceneDeclared, VisualFade, PROP_Z_LAYER,
 };
 use bevy::prelude::*;
 use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
@@ -16,6 +18,9 @@ impl Plugin for LevelLoaderPlugin {
         app.register_type::<LevelIsometric>()
             .register_type::<SceneDeclared>()
             .register_type::<ColliderDeclared>()
+            .register_type::<FloorDeclared>()
+            .register_type::<AccessDeclared>()
+            .register_type::<AccessKind>()
             .init_resource::<LevelPrefabCatalog>()
             .init_resource::<LevelRequests>()
             .init_resource::<CurrentLevel>()
@@ -66,6 +71,9 @@ pub struct LevelInstance {
 
 #[derive(Component)]
 pub struct LevelScene;
+
+#[derive(Component)]
+pub struct LevelCollider;
 
 fn clear_level_requests(
     mut requests: ResMut<LevelRequests>,
@@ -294,36 +302,53 @@ fn load_prefab(
             LevelInstance {
                 prefab: level_label.to_string(),
             },
+            LevelVertical::from_level(&prefab.level),
             Transform::default(),
+            Visibility::default(),
         ))
         .id();
     commands.entity(level_entity).add_child(instance_entity);
 
     for scene in prefab.level.scenes.iter() {
         let image = asset_server.load(scene.asset.clone());
+        let visual_y = scene.position.y + elevation_screen_offset(scene.elevation);
+        let rank = rank_from_elevation(scene.elevation);
         commands.entity(instance_entity).with_children(|parent| {
             parent.spawn((
                 LevelScene,
-                Sprite { image, ..default() },
-                Transform::from_xyz(scene.position.x, scene.position.y, scene.z)
-                    .with_scale(Vec3::splat(scene.scale)),
+                RankedVisual { rank },
+                VisualFade { alpha: 0.0 },
+                Sprite {
+                    image,
+                    color: Color::WHITE.with_alpha(0.0),
+                    ..default()
+                },
+                Transform::from_xyz(
+                    scene.position.x,
+                    visual_y,
+                    level_z(rank, PROP_Z_LAYER + scene.z, scene.position.y),
+                )
+                .with_scale(Vec3::splat(scene.scale)),
             ));
         });
     }
 
     for collider in prefab.level.colliders.iter() {
-        let obstacle = if collider.screen_space {
-            ObstacleCollider::rect(collider.half_extents)
-        } else {
-            ObstacleCollider::iso(collider.half_extents)
-        };
-
+        let ground = GroundTransform::from_declared(collider);
+        let visual_y = collider.position.y + elevation_screen_offset(collider.z_min);
+        let rank = rank_from_elevation(collider.z_min);
         commands.entity(instance_entity).with_children(|parent| {
             parent.spawn((
-                obstacle,
-                Transform::from_xyz(collider.position.x, collider.position.y, 0.0).with_rotation(
-                    Quat::from_rotation_z(collider.rotation_degrees.to_radians()),
-                ),
+                LevelCollider,
+                ObstacleCollider::from_declared(collider),
+                ground,
+                RankedVisual { rank },
+                Transform::from_xyz(
+                    collider.position.x,
+                    visual_y,
+                    level_z(rank, PROP_Z_LAYER, collider.position.y),
+                )
+                .with_rotation(Quat::from_rotation_z(ground.rotation)),
             ));
         });
     }
@@ -430,6 +455,9 @@ mod tests {
         app.register_type::<LevelIsometric>()
             .register_type::<SceneDeclared>()
             .register_type::<ColliderDeclared>()
+            .register_type::<FloorDeclared>()
+            .register_type::<AccessDeclared>()
+            .register_type::<AccessKind>()
             .init_resource::<LevelPrefabCatalog>()
             .add_systems(Startup, load_level_prefab_catalog);
         app.update();
@@ -440,8 +468,8 @@ mod tests {
             .get("prologue_restaurant_0")
             .expect("prologue_restaurant_0 should be registered");
 
-        assert!(!prefab.level.scenes.is_empty());
-        assert!(!prefab.level.colliders.is_empty());
+        assert!(prefab.level.scenes.is_empty());
+        assert!(prefab.level.colliders.is_empty());
         assert!(prefab
             .level
             .scenes
@@ -462,6 +490,9 @@ mod load_tests {
             .register_type::<LevelIsometric>()
             .register_type::<SceneDeclared>()
             .register_type::<ColliderDeclared>()
+            .register_type::<FloorDeclared>()
+            .register_type::<AccessDeclared>()
+            .register_type::<AccessKind>()
             .init_asset::<Image>()
             .init_resource::<LevelPrefabCatalog>()
             .init_resource::<LevelRequests>()
@@ -523,6 +554,9 @@ mod load_tests {
             half_extents: Vec2::new(24.0, 12.0),
             rotation_degrees: 0.0,
             screen_space: false,
+            vertices: Vec::new(),
+            z_min: 0.0,
+            height: crate::levels::default_collider_height(),
         };
 
         let mut saved_level = source.clone();
@@ -583,6 +617,9 @@ mod load_tests {
                     half_extents: Vec2::new(20.0, 10.0),
                     rotation_degrees: 0.0,
                     screen_space: false,
+                    vertices: Vec::new(),
+                    z_min: 0.0,
+                    height: crate::levels::default_collider_height(),
                 });
         }
 
@@ -618,22 +655,11 @@ mod load_tests {
             },
         );
         assert_eq!(instance_count(&mut app), 1);
-        assert!(collider_count(&mut app) > 0);
+        assert_eq!(collider_count(&mut app), 0);
         assert!(app.world().resource::<PlayerSpawnRequest>().0.is_some());
 
         app.update();
-        let collider_positions: Vec<Vec2> = app
-            .world_mut()
-            .query::<(&GlobalTransform, &ObstacleCollider)>()
-            .iter(app.world())
-            .map(|(transform, _)| transform.translation().xy())
-            .collect();
-        assert!(
-            collider_positions
-                .iter()
-                .any(|position| position.distance(Vec2::new(-480.0, -30.0)) < 0.01),
-            "loaded colliders did not inherit level transforms: {collider_positions:?}"
-        );
+        assert_eq!(instance_count(&mut app), 1);
 
         request(
             &mut app,

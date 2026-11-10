@@ -2,10 +2,12 @@ mod chunks;
 mod collision;
 mod config;
 mod editor;
+mod geometry_visuals;
 mod level_loader;
 mod logistics;
 mod mini_game;
 mod pack;
+mod vertical;
 
 use crate::GameState;
 use bevy::prelude::*;
@@ -16,10 +18,12 @@ pub use chunks::*;
 pub use collision::*;
 pub use config::*;
 pub use editor::*;
+pub use geometry_visuals::*;
 pub use level_loader::*;
 pub use logistics::*;
 pub use mini_game::*;
 pub use pack::*;
+pub use vertical::*;
 
 pub struct LevelsPlugin;
 
@@ -31,6 +35,7 @@ impl Plugin for LevelsPlugin {
         )
         .add_plugins((
             LevelLoaderPlugin,
+            LevelGeometryVisualsPlugin,
             LevelEditorPlugin,
             //ChunkPlugin,
             TransportPlugin,
@@ -72,6 +77,10 @@ pub struct LevelIsometric {
     pub scenes: Vec<SceneDeclared>,
     #[reflect(default)]
     pub colliders: Vec<ColliderDeclared>,
+    #[reflect(default)]
+    pub floors: Vec<FloorDeclared>,
+    #[reflect(default)]
+    pub accesses: Vec<AccessDeclared>,
     #[reflect(default)]
     pub spawn: Vec2,
 }
@@ -201,6 +210,8 @@ pub struct SceneDeclared {
     pub position: Vec2,
     pub scale: f32,
     pub z: f32,
+    #[reflect(default)]
+    pub elevation: f32,
 }
 
 #[derive(Reflect, Debug, Clone)]
@@ -211,6 +222,62 @@ pub struct ColliderDeclared {
     pub rotation_degrees: f32,
     #[reflect(default)]
     pub screen_space: bool,
+    #[reflect(default)]
+    pub vertices: Vec<Vec2>,
+    #[reflect(default)]
+    pub z_min: f32,
+    #[reflect(default = "default_collider_height")]
+    pub height: f32,
+}
+
+pub fn default_collider_height() -> f32 {
+    1.0
+}
+
+pub fn default_access_width() -> f32 {
+    64.0
+}
+
+impl ColliderDeclared {
+    pub fn z_max(&self) -> f32 {
+        self.z_min + self.height.max(0.01)
+    }
+
+    pub fn same_vertical_range(&self, other: &Self) -> bool {
+        (self.z_min - other.z_min).abs() < 0.01 && (self.height - other.height).abs() < 0.01
+    }
+
+    pub fn copy_vertical_from(&mut self, other: &Self) {
+        self.z_min = other.z_min;
+        self.height = other.height;
+    }
+}
+
+#[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AccessKind {
+    #[default]
+    Ramp,
+    Stairs,
+}
+
+#[derive(Reflect, Debug, Clone)]
+pub struct FloorDeclared {
+    pub elevation: f32,
+    #[reflect(default)]
+    pub rank: i16,
+    pub cells: Vec<IVec2>,
+}
+
+#[derive(Reflect, Debug, Clone)]
+pub struct AccessDeclared {
+    pub from: Vec2,
+    pub to: Vec2,
+    #[reflect(default = "default_access_width")]
+    pub width: f32,
+    pub from_elevation: f32,
+    pub to_elevation: f32,
+    #[reflect(default)]
+    pub kind: AccessKind,
 }
 
 impl From<(Vec2, String)> for SurfaceDeclared {
@@ -375,6 +442,7 @@ pub fn spawn_level(mut cmd: Commands) {
         LevelLoadStatus::AssetsLoading,
         Transform::default(),
         GlobalTransform::default(),
+        Visibility::default(),
         StateScoped(GameState::Playing),
     ));
 }
@@ -741,6 +809,8 @@ _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | _ | 
                 resources: map,
                 scenes: vec![],
                 colliders: vec![],
+                floors: vec![],
+                accesses: vec![],
                 spawn: Vec2::ZERO,
             };
 
