@@ -1,4 +1,6 @@
 use bevy::prelude::*;
+use bevy::reflect::serde::ReflectDeserializer;
+use serde::de::DeserializeSeed;
 use std::io::{self, Read, Write};
 use std::thread;
 use std::time::Duration;
@@ -40,7 +42,7 @@ fn main() {
     if let Err(_) = io::stdin().read_to_string(&mut input) {
         return;
     }
-    let selected: usize = match input.trim().parse() {
+    let selected: usize = match input.trim().parse::<usize>() {
         Ok(n) if n > 0 && n <= story_files.len() => n - 1,
         _ => return,
     };
@@ -56,21 +58,26 @@ fn main() {
         }
     };
 
-    // Try to deserialize as ScriptDeclared wrapped in Bevy reflect format
-    // The files are in Bevy Reflect + RON format like other assets
     let mut app = App::new();
     app.register_type::<ScriptDeclared>()
         .register_type::<ScriptAction>()
         .register_type::<Conversation>();
 
-    // For now, try to parse as RON with type info
-    // Bevy's reflect deserialization is complex - but let's do a simple approach
-    // by using ron to deserialize the structure
-    let script: ScriptDeclared = match ron::de::from_str(&content) {
-        Ok(s) => s,
-        Err(e) => {
-            println!("Failed to deserialize (try direct): {}", e);
-            // Try alternative parsing
+    let type_registry = app.world().resource::<AppTypeRegistry>().clone();
+    let type_registry = type_registry.read();
+    let mut deserializer = ron::de::Deserializer::from_str(&content).unwrap();
+    let reflect_deserializer = ReflectDeserializer::new(&type_registry);
+    let value = match reflect_deserializer.deserialize(&mut deserializer) {
+        Ok(value) => value,
+        Err(error) => {
+            println!("Failed to deserialize: {}", error);
+            return;
+        }
+    };
+    let script = match ScriptDeclared::from_reflect(&*value) {
+        Some(script) => script,
+        None => {
+            println!("Failed to build script from reflected value");
             return;
         }
     };
@@ -107,6 +114,22 @@ fn execute_actions(actions: &[ScriptAction], step: &mut usize, total: usize, dep
                 println!("{}🗺️  [SPAWN LEVEL] {}", indent, level_label);
                 println!("{}   Loading environment...", indent);
                 thread::sleep(Duration::from_millis(800));
+            }
+            ScriptAction::UnloadLevel { level_label } => {
+                println!("{}🗺️  [UNLOAD LEVEL] {}", indent, level_label);
+                thread::sleep(Duration::from_millis(400));
+            }
+            ScriptAction::SaveLevel { level_label } => {
+                println!("{}💾 [SAVE LEVEL] {}", indent, level_label);
+                thread::sleep(Duration::from_millis(400));
+            }
+            ScriptAction::DeleteLevel { level_label } => {
+                println!("{}🗑️  [DELETE LEVEL] {}", indent, level_label);
+                thread::sleep(Duration::from_millis(400));
+            }
+            ScriptAction::RegenerateLevel { level_label } => {
+                println!("{}🔄 [REGENERATE LEVEL] {}", indent, level_label);
+                thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::CameraMove { camera, position } => {
                 println!("{}📷 [CAMERA_MOVE] {} → {:?}", indent, camera, position);
@@ -221,7 +244,7 @@ fn execute_actions(actions: &[ScriptAction], step: &mut usize, total: usize, dep
                 print!("\r{}   ✓ Research unlocked\n", indent);
                 thread::sleep(Duration::from_millis(300));
             }
-            ScriptAction::JumpTo { condition, story_beat_label } => {
+            ScriptAction::JumpTo { condition, story_beat_label, .. } => {
                 if let Some(c) = condition {
                     println!("{}🔀 [JUMP] → '{}' (if {:?})", indent, story_beat_label, c);
                 } else {

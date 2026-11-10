@@ -36,7 +36,11 @@ fn load_story(mut reviewer: ResMut<HeadlessStoryReviewer>) {
                 ]
             },
             ScriptAction::converse("base::pov_player".into(), "Frank... I thought we had a deal.".into()),
-            ScriptAction::JumpTo { condition: None, story_beat_label: "chapter_1".into() },
+            ScriptAction::JumpTo {
+                condition: None,
+                story_beat_label: "chapter_1".into(),
+                params: Default::default(),
+            },
         ],
     };
 
@@ -47,5 +51,6 @@ fn load_story(mut reviewer: ResMut<HeadlessStoryReviewer>) {
         actions: script.actions,
         elapsed_in_action: 0.0,
         step_count: 0,
+        last_choice: None,
     });
 }

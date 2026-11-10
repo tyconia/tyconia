@@ -100,6 +100,7 @@ fn main() {
             ScriptAction::JumpTo {
                 condition: None,
                 story_beat_label: "chapter_1".into(),
+                params: Default::default(),
             },
         ],
     };
@@ -121,6 +122,22 @@ fn main() {
             ScriptAction::SpawnToLevel { level_label } => {
                 println!("🗺️  Loading level: {}", level_label);
                 thread::sleep(Duration::from_millis(800));
+            }
+            ScriptAction::UnloadLevel { level_label } => {
+                println!("🗺️  Unloading level: {}", level_label);
+                thread::sleep(Duration::from_millis(400));
+            }
+            ScriptAction::SaveLevel { level_label } => {
+                println!("💾 Saving level: {}", level_label);
+                thread::sleep(Duration::from_millis(400));
+            }
+            ScriptAction::DeleteLevel { level_label } => {
+                println!("🗑️  Deleting level: {}", level_label);
+                thread::sleep(Duration::from_millis(400));
+            }
+            ScriptAction::RegenerateLevel { level_label } => {
+                println!("🔄 Regenerating level: {}", level_label);
+                thread::sleep(Duration::from_millis(400));
             }
             ScriptAction::CameraMove { camera, position } => {
                 println!("📷 Camera [{}] moving to {:?}", camera, position);
@@ -251,6 +268,7 @@ fn main() {
             ScriptAction::JumpTo {
                 condition,
                 story_beat_label,
+                ..
             } => {
                 if let Some(c) = condition {
                     println!("🔀 Jumping to '{}' if {:?}", story_beat_label, c);
