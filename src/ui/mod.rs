@@ -11,7 +11,6 @@ mod notification;
 mod prompt;
 mod range_slider;
 mod spacing;
-//mod selection;
 mod system_cursor;
 mod tabs;
 mod tooltip;
@@ -70,7 +69,6 @@ impl Plugin for UiPlugin {
             tooltip::TooltipPlugin,
             #[cfg(not(target_arch = "wasm32"))]
             system_cursor::SystemCursorPlugin,
-            //selection::SelectionPlugin,
         ));
     }
 }

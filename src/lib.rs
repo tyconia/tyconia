@@ -109,7 +109,6 @@ impl Plugin for GamePlugin {
                 levels::LevelsPlugin,
                 StoryPlugin,
                 ui::UiPlugin,
-                /* stitch_lang::prelude::StitchPlugin, */
             ));
 
         #[cfg(debug_assertions)]
