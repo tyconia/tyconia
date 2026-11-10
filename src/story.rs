@@ -678,6 +678,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn write_scenario() {
         let mut app = App::new();
         app.register_type::<ScenarioDeclared>();
@@ -714,6 +715,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn write_comprehensive_script() {
         let mut app = App::new();
         app.register_type::<ScriptDeclared>();

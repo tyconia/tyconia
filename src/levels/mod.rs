@@ -736,6 +736,7 @@ I | J | 6"#
         assert_eq!(validate_maps(&maps), Ok((0, 0)));
     }
     #[test]
+    #[ignore = "rewrites asset files"]
     fn write_level() {
         let mut app = App::new();
         app.register_type::<LevelIsometric>();

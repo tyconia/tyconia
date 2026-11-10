@@ -22,6 +22,7 @@ mod tests {
     use std::fs;
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn write_level() {
         let mut app = App::new();
         app.register_type::<ResearchDeclared>();

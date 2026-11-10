@@ -127,6 +127,7 @@ pub struct ModPack {
 
 mod tests {
     #[test]
+    #[ignore = "rewrites asset files"]
     fn mod_pack_base_recipes() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let recipe_pack = crate::RecipePack(vec![
@@ -171,6 +172,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn mod_pack_base_research() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let research_pack = crate::ResearchPack(vec![
@@ -202,6 +204,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn mod_pack_base_items() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let mod_pack = crate::ItemPack(vec![
@@ -235,6 +238,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn mod_pack_tyconic() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let mod_pack = crate::ModPack {
@@ -284,6 +288,7 @@ mod tests {
         app.run();
     }
     #[test]
+    #[ignore = "rewrites asset files"]
     fn mod_pack_base() {
         fn serialize_mod_pack(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let mod_pack = crate::ModPack {
@@ -326,6 +331,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "rewrites asset files"]
     fn serialize_ron() {
         fn serialize(type_registry: bevy::prelude::Res<bevy::prelude::AppTypeRegistry>) {
             let item_pack = crate::Pack {
