@@ -77,97 +77,10 @@ pub struct LevelIsometric {
     pub spawn: Vec2,
 }
 
-use crate::loading::ItemTextureMap;
-
 type RawTile = (TilePos, usize);
-type TexturedTile = (TilePos, Handle<Image>);
 type RawMaps = Vec<(Vec2, (usize, usize), Vec<RawTile>)>;
-type TexturedMaps = Vec<(Vec2, (usize, usize), Vec<TexturedTile>)>;
 
 impl LevelIsometric {
-    pub fn generate(
-        &self,
-        cmd: &mut Commands,
-        maps: RawMaps,
-        level: Query<(Entity, &ItemTextureMap), With<Level>>,
-    ) {
-        let (level_entity, item_texture_map) = level.single();
-        let legend_textures = self.legend_textures(item_texture_map);
-        let mut level = cmd.entity(level_entity);
-
-        maps.into_iter().rev().enumerate().for_each(
-            |(layer, (tilemap_position, size, indexed_tiles))| {
-                level.with_children(|parent| {
-                    let mut tilemap_entity_cmd = parent.spawn_empty();
-                    let tilemap_entity_id = tilemap_entity_cmd.id();
-                    let tilemap_id = TilemapId(tilemap_entity_id);
-
-                    let map_size = TilemapSize::new(size.0 as u32, size.1 as u32);
-                    let grid_size = TilemapGridSize::new(32., 64.);
-                    let map_type = TilemapType::Isometric(IsoCoordSystem::Diamond);
-
-                    indexed_tiles.into_iter().for_each(|(position, index)| {
-                        tilemap_entity_cmd.with_children(|parent| {
-                            parent.spawn(TileBundle {
-                                position,
-                                tilemap_id,
-                                texture_index: TileTextureIndex(index as u32),
-                                ..default()
-                            });
-                        });
-                    });
-
-                    parent.spawn(TilemapBundle {
-                        grid_size,
-                        map_type,
-                        size: map_size,
-                        texture: TilemapTexture::Vector(legend_textures.clone()),
-                        transform: Transform::from_translation(tilemap_position.extend(0.))
-                            * get_tilemap_center_transform(
-                                &map_size,
-                                &grid_size,
-                                &map_type,
-                                layer as f32,
-                            ),
-                        ..Default::default()
-                    });
-                });
-            },
-        );
-    }
-
-    pub fn legend_textures(&self, textures: &ItemTextureMap) -> Vec<Handle<Image>> {
-        self.legend
-            .as_slice()
-            .into_iter()
-            .map(|ItemId(id)| textures.0.get(id).unwrap().clone())
-            .collect()
-    }
-
-    pub fn apply_texture(
-        &self,
-        tiles: &RawMaps,
-        textures: Query<&ItemTextureMap, With<Level>>,
-    ) -> TexturedMaps {
-        let textures = textures.single();
-
-        tiles
-            .into_iter()
-            .map(|(pos, map_size, map)| {
-                let texture_map = map
-                    .into_iter()
-                    .map(|(tile_pos, index)| {
-                        let item_id = self.legend.get(*index).unwrap();
-                        let handle_image = textures.0.get(&item_id.0).unwrap().clone();
-                        (*tile_pos, handle_image)
-                    })
-                    .collect::<Vec<TexturedTile>>();
-
-                (pos.clone(), map_size.clone(), texture_map)
-            })
-            .collect::<Vec<_>>()
-    }
-
     pub fn tiles_with_texture_index(&self) -> Result<RawMaps, ValidationError> {
         let maps: Vec<String> = self
             .surface
