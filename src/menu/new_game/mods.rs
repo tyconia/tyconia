@@ -23,8 +23,6 @@ pub(crate) fn setup(
     });
 }
 
-pub(crate) fn load_mods() {}
-
 pub(crate) fn mods_checkbox(
     cmd: &mut ChildBuilder,
     ui: &Res<loading::UiAssets>,

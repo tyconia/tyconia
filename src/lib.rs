@@ -67,8 +67,6 @@ fn quit(mut event_writer: EventWriter<AppExit>) {
 enum InGameState {
     #[default]
     Normal,
-    // simulation paused. useful for saving
-    Paused,
 }
 
 pub fn handle_game_state_events(

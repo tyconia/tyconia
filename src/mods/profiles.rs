@@ -132,10 +132,6 @@ pub struct PendingModProfile(pub ModProfileConfig);
 pub struct ModProfile(pub HashSet<(ModPack, PathBuf)>);
 
 impl ModProfile {
-    const SCENARIO_PATH: &'static str = "scenarios";
-    const MIGRATION_PATH: &'static str = "migrations";
-    const ASSET_PATH: &'static str = "assets";
-
     pub fn scenario(&self) -> Option<PathBuf> {
         self.0.iter().find(|(_, _)| true);
 

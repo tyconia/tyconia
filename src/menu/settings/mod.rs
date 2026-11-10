@@ -315,7 +315,7 @@ struct SettingsCategoryTab(SettingsCategory);
 struct SettingsSubtabGroup(SettingsCategory);
 
 // generate settings page as child of backdrop
-pub(crate) fn setup(
+fn setup(
     mut cmd: Commands,
     backdrop: super::MenuBackdropQuery,
     fonts: Res<FontAssets>,

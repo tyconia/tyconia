@@ -37,11 +37,8 @@ impl Plugin for LevelsPlugin {
             LevelLoaderPlugin,
             LevelGeometryVisualsPlugin,
             LevelEditorPlugin,
-            //ChunkPlugin,
             TransportPlugin,
             ResearchEditorPlugin,
-            //ModsMenuPlugin,
-            //ToolBarPlugin,
         ));
 
         #[cfg(debug_assertions)]

@@ -5,7 +5,6 @@
 //! root-level UI node so it is positioned relative to the viewport and can
 //! never be clipped by the widget that owns the tooltip.
 
-use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use crate::loading::{FontAssets, UiAssets};

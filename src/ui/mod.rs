@@ -75,7 +75,6 @@ impl Plugin for UiPlugin {
     }
 }
 
-const LIGHT_FONT: TextColor = TextColor(Color::srgba(0.5, 0.5, 0.5, 1.0));
 const GREY_1_FONT: TextColor = TextColor(Color::srgba(0.4, 0.4, 0.4, 1.0));
 const DARK_FONT: TextColor = TextColor(Color::srgba(0.3, 0.3, 0.3, 1.0));
 
