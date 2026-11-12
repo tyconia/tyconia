@@ -25,7 +25,10 @@ pub fn init_mod_profile(
     level: Query<Entity, With<Level>>,
     pending: Res<PendingModProfile>,
 ) {
-    let level = level.single();
+    let Ok(level) = level.get_single() else {
+        warn!("Skipping mod profile setup: expected exactly one level entity");
+        return;
+    };
 
     cmd.entity(level).insert(pending.0.clone());
 }
@@ -45,7 +48,10 @@ pub fn load_mods_from_profile(
 
     let mut loaded_mods = HashSet::new();
 
-    let (level_entity, profile_config) = profile.single();
+    let Ok((level_entity, profile_config)) = profile.get_single() else {
+        warn!("Skipping mod loading: expected exactly one level entity");
+        return;
+    };
 
     cmd.entity(level_entity).insert(ModProfile(loaded_mods));
 }
@@ -59,54 +65,83 @@ pub fn load_mods_from_profile(
     let type_registry = type_registry.read();
     info!("about to load mods!");
     // load platform specific app directories
-    let project_dir = directories::ProjectDirs::from(
+    let Some(project_dir) = directories::ProjectDirs::from(
         env!("PROJECT_QUALIFIER"),
         env!("PROJECT_ORGANIZATION"),
         env!("PROJECT_APPLICATION"),
-    )
-    .expect("no valid home directory path could be retrieved from the operating system");
+    ) else {
+        warn!("Skipping mod loading: no valid home directory path could be retrieved");
+        return;
+    };
 
     let mod_dir = project_dir.config_dir().join("mods");
 
     let mut loaded_mods = HashSet::new();
 
-    let (level_entity, profile_config) = profile.single();
+    let Ok((level_entity, profile_config)) = profile.get_single() else {
+        warn!("Skipping mod loading: expected exactly one level entity");
+        return;
+    };
 
-    for mod_path in profile_config.0.iter().map(|shorthand| {
-        let meta: Meta = shorthand.0.parse().unwrap();
-        mod_dir.join(meta.mod_name)
-    }) {
+    for mod_path in
+        profile_config
+            .0
+            .iter()
+            .filter_map(|shorthand| match shorthand.0.parse::<Meta>() {
+                Ok(meta) => Some(mod_dir.join(meta.mod_name)),
+                Err(error) => {
+                    warn!(
+                        "Skipping invalid mod profile entry {:?}: {error:?}",
+                        shorthand.0
+                    );
+                    None
+                }
+            })
+    {
         let mod_meta_path = mod_path.join("meta.ron");
 
         match fs::File::open(&mod_meta_path) {
             Ok(mut mod_meta) => {
                 let mut ron = String::new();
-                mod_meta.read_to_string(&mut ron).map_or_else(
-                    |err| {
-                        error!(
-                            "Unable to read ron at {}. {}",
-                            mod_meta_path.to_string_lossy(),
-                            err
-                        );
-                    },
-                    |_| {
-                        let mut deserializer = ron::de::Deserializer::from_str(&ron).unwrap();
-                        let reflect_deserializer = ReflectDeserializer::new(&type_registry);
+                if let Err(error) = mod_meta.read_to_string(&mut ron) {
+                    error!(
+                        "Unable to read ron at {}. {}",
+                        mod_meta_path.to_string_lossy(),
+                        error
+                    );
+                    continue;
+                }
 
-                        let partial_reflect_value =
-                            reflect_deserializer.deserialize(&mut deserializer).unwrap();
+                let Ok(mut deserializer) = ron::de::Deserializer::from_str(&ron) else {
+                    error!("Unable to parse ron at {}", mod_meta_path.to_string_lossy());
+                    continue;
+                };
+                let reflect_deserializer = ReflectDeserializer::new(&type_registry);
 
-                        let mod_pack = ModPack::from_reflect(&*partial_reflect_value).unwrap();
+                let Ok(partial_reflect_value) = reflect_deserializer.deserialize(&mut deserializer)
+                else {
+                    error!(
+                        "Unable to deserialize ron at {}",
+                        mod_meta_path.to_string_lossy()
+                    );
+                    continue;
+                };
 
-                        info!(
-                            "loaded mod pack {} at {}",
-                            mod_pack.mod_id,
-                            mod_path.to_string_lossy()
-                        );
+                let Some(mod_pack) = ModPack::from_reflect(&*partial_reflect_value) else {
+                    error!(
+                        "Unable to reflect mod pack from {}",
+                        mod_meta_path.to_string_lossy()
+                    );
+                    continue;
+                };
 
-                        loaded_mods.insert((mod_pack, mod_path));
-                    },
+                info!(
+                    "loaded mod pack {} at {}",
+                    mod_pack.mod_id,
+                    mod_path.to_string_lossy()
                 );
+
+                loaded_mods.insert((mod_pack, mod_path));
             }
 
             Err(error) => {

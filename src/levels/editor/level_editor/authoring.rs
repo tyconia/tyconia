@@ -38,8 +38,8 @@ pub(super) fn author_colliders(
         return;
     }
 
-    let cell = grid.snap_cell(cursor.0);
     let elevation = state.level as f32;
+    let cell = editor_cell_at_elevation(&grid, cursor.0, elevation);
 
     if deconstruct_requested {
         let Ok(mut manager) = manager.get_single_mut() else {
@@ -107,7 +107,7 @@ pub(super) fn author_colliders(
     }
 
     if mouse.pressed(MouseButton::Left) && state.dragging {
-        state.drag_end = Some(grid.snap_cell(cursor.0));
+        state.drag_end = Some(editor_cell_at_elevation(&grid, cursor.0, elevation));
     }
 
     if !mouse.just_released(MouseButton::Left) || !state.dragging {

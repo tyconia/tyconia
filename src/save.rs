@@ -83,17 +83,42 @@ fn scan_saves() -> Vec<SaveEntry> {
     let Some(directory) = saves_dir() else {
         return Vec::new();
     };
-    let Ok(entries) = std::fs::read_dir(directory) else {
-        return Vec::new();
+    let entries = match std::fs::read_dir(&directory) {
+        Ok(entries) => entries,
+        Err(error) => {
+            warn!(
+                "Failed to read save directory {}: {error}",
+                directory.display()
+            );
+            return Vec::new();
+        }
     };
 
     let mut saves = entries
-        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| match entry {
+            Ok(entry) => Some(entry),
+            Err(error) => {
+                warn!("Failed to read save directory entry: {error}");
+                None
+            }
+        })
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "ron"))
         .filter_map(|entry| {
             let path = entry.path();
-            let contents = std::fs::read_to_string(&path).ok()?;
-            let metadata = ron::from_str::<SaveMetadata>(&contents).ok()?;
+            let contents = match std::fs::read_to_string(&path) {
+                Ok(contents) => contents,
+                Err(error) => {
+                    warn!("Failed to read save file {}: {error}", path.display());
+                    return None;
+                }
+            };
+            let metadata = match ron::from_str::<SaveMetadata>(&contents) {
+                Ok(metadata) => metadata,
+                Err(error) => {
+                    warn!("Skipping malformed save file {}: {error}", path.display());
+                    return None;
+                }
+            };
             Some(SaveEntry { path, metadata })
         })
         .collect::<Vec<_>>();

@@ -139,6 +139,12 @@ pub struct UiAssets {
     #[asset(path = "textures/ui/log_level_critical_ico.png")]
     pub log_level_critical_ico: Handle<Image>,
 
+    // level change
+    #[asset(path = "textures/ui/level_up_ico.png")]
+    pub level_up_ico: Handle<Image>,
+    #[asset(path = "textures/ui/level_down_ico.png")]
+    pub level_down_ico: Handle<Image>,
+
     #[asset(path = "textures/ui/inventory_slot.png")]
     pub inventory_slot: Handle<Image>,
     #[asset(path = "textures/ui/inventory_slot__hover.png")]

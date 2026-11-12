@@ -124,8 +124,9 @@ fn order_ccw(mut corners: [Vec2; 4]) -> [Vec2; 4] {
 pub fn draw_obstacle_collider_gizmos(
     mut gizmos: Gizmos,
     colliders: Query<(&GlobalTransform, &ObstacleCollider)>,
+    mut edges: Local<HashMap<((i32, i32), (i32, i32), i32, i32), (u32, Vec2, Vec2, Color)>>,
 ) {
-    let mut edges = HashMap::new();
+    edges.clear();
 
     for (transform, collider) in &colliders {
         let color = if collider.screen_space {

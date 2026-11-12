@@ -576,6 +576,9 @@ fn enable_developer_mode(
                             title: "Developer mode active".into(),
                             level: NotificationLevel::Info,
                             description: "Editor tools expanded and lua scripting enabled".into(),
+                            icon: None,
+                            size: NotificationSize::Normal,
+                            placement: NotificationPlacement::BottomRight,
                         }
                         .queue(None, &mut notifications_channel);
                     }

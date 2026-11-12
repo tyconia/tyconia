@@ -74,10 +74,34 @@ impl LevelVertical {
         position: Vec2,
         current_elevation: f32,
     ) -> Option<HeightSample> {
+        if let Some(sample) = self.sample_band(grid, position, current_elevation) {
+            return Some(sample);
+        }
+
+        if current_elevation.abs() <= GROUND_EPSILON {
+            return Some(HeightSample {
+                elevation: 0.0,
+                rank: 0,
+            });
+        }
+
+        None
+    }
+
+    /// Find a floor or access at `position` that is reachable from
+    /// `current_elevation` without assuming the implicit ground floor. This is
+    /// used to distinguish "there is nothing here above ground" from "another
+    /// floor sits above this position".
+    pub fn sample_band(
+        &self,
+        grid: &IsoGrid,
+        position: Vec2,
+        current_elevation: f32,
+    ) -> Option<HeightSample> {
         if self.floors.is_empty() && self.accesses.is_empty() {
             return Some(HeightSample {
                 elevation: current_elevation,
-                rank: 0,
+                rank: rank_from_elevation(current_elevation),
             });
         }
 
@@ -125,18 +149,58 @@ impl LevelVertical {
                 });
             }
         }
-        if best_floor.is_some() {
-            return best_floor;
-        }
 
-        if current_elevation.abs() <= GROUND_EPSILON {
+        best_floor
+    }
+
+    /// Find the highest walkable height at `position`, regardless of the
+    /// elevation band the caller currently occupies. This is used when routing
+    /// toward a destination that lives on another floor.
+    pub fn sample_any(&self, grid: &IsoGrid, position: Vec2) -> Option<HeightSample> {
+        if self.floors.is_empty() && self.accesses.is_empty() {
             return Some(HeightSample {
                 elevation: 0.0,
                 rank: 0,
             });
         }
 
-        None
+        let cell = grid.snap_cell(position);
+        let mut best: Option<HeightSample> = None;
+
+        for floor in &self.floors {
+            if !floor.cells.contains(&cell) {
+                continue;
+            }
+            if best
+                .map(|sample| floor.elevation > sample.elevation)
+                .unwrap_or(true)
+            {
+                best = Some(HeightSample {
+                    elevation: floor.elevation,
+                    rank: floor.rank,
+                });
+            }
+        }
+
+        for access in &self.accesses {
+            let Some(elevation) = access.height_at(grid, position) else {
+                continue;
+            };
+            if best
+                .map(|sample| elevation > sample.elevation)
+                .unwrap_or(true)
+            {
+                best = Some(HeightSample {
+                    elevation,
+                    rank: rank_from_elevation(elevation),
+                });
+            }
+        }
+
+        best.or(Some(HeightSample {
+            elevation: 0.0,
+            rank: 0,
+        }))
     }
 }
 
@@ -416,5 +480,39 @@ mod tests {
             )
             .expect("mid-spiral should be walkable");
         assert!((sample.elevation - 0.5).abs() < 0.05);
+    }
+
+    #[test]
+    fn sample_any_finds_the_highest_floor_at_a_position() {
+        let grid = grid();
+        let cell = IVec2::new(2, 2);
+        let vertical = LevelVertical::from_parts(
+            vec![floor(0.0, 0, &[cell]), floor(2.0, 2, &[cell])],
+            Vec::new(),
+        );
+        let position = grid.cell_to_world(Vec2::new(2.0, 2.0));
+
+        let sample = vertical
+            .sample_any(&grid, position)
+            .expect("stacked floors should be walkable");
+
+        assert_eq!(sample.elevation, 2.0);
+        assert_eq!(sample.rank, 2);
+        assert!(vertical.sample(&grid, position, 0.0).unwrap().elevation == 0.0);
+    }
+
+    #[test]
+    fn sample_any_uses_the_highest_ramp_end() {
+        let grid = grid();
+        let start = grid.cell_to_world(Vec2::new(0.0, 0.0));
+        let end = grid.cell_to_world(Vec2::new(1.0, 0.0));
+        let vertical = LevelVertical::from_parts(Vec::new(), vec![ramp(start, end, 0.0, 1.0)]);
+
+        let sample = vertical
+            .sample_any(&grid, end)
+            .expect("ramp end should be walkable");
+
+        assert!((sample.elevation - 1.0).abs() < 0.001);
+        assert_eq!(sample.rank, 1);
     }
 }

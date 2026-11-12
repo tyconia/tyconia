@@ -2,7 +2,8 @@ use crate::GameState;
 use crate::{
     elevation_screen_offset, level_z, rank_from_elevation, AccessDeclared, AccessKind,
     ColliderDeclared, FloorDeclared, GroundTransform, Level, LevelIsometric, LevelManager,
-    LevelVertical, ObstacleCollider, RankedVisual, SceneDeclared, VisualFade, PROP_Z_LAYER,
+    LevelVertical, NpcDeclared, NpcKind, ObstacleCollider, RankedVisual, SceneDeclared, VisualFade,
+    PROP_Z_LAYER,
 };
 use bevy::prelude::*;
 use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
@@ -21,6 +22,8 @@ impl Plugin for LevelLoaderPlugin {
             .register_type::<FloorDeclared>()
             .register_type::<AccessDeclared>()
             .register_type::<AccessKind>()
+            .register_type::<NpcDeclared>()
+            .register_type::<NpcKind>()
             .init_resource::<LevelPrefabCatalog>()
             .init_resource::<LevelRequests>()
             .init_resource::<CurrentLevel>()
@@ -353,12 +356,24 @@ fn load_prefab(
         });
     }
 
+    for npc in prefab.level.npcs.iter() {
+        crate::npc::spawn_npc(
+            commands,
+            instance_entity,
+            npc.position,
+            npc.elevation,
+            npc.patrol.clone(),
+            npc.kind,
+        );
+    }
+
     info!(
-        "LevelLoader: loaded prefab '{}' from {} ({} scenes, {} colliders)",
+        "LevelLoader: loaded prefab '{}' from {} ({} scenes, {} colliders, {} npcs)",
         level_label,
         prefab.path.display(),
         prefab.level.scenes.len(),
-        prefab.level.colliders.len()
+        prefab.level.colliders.len(),
+        prefab.level.npcs.len()
     );
 
     manager
@@ -458,6 +473,8 @@ mod tests {
             .register_type::<FloorDeclared>()
             .register_type::<AccessDeclared>()
             .register_type::<AccessKind>()
+            .register_type::<NpcDeclared>()
+            .register_type::<NpcKind>()
             .init_resource::<LevelPrefabCatalog>()
             .add_systems(Startup, load_level_prefab_catalog);
         app.update();
@@ -493,6 +510,8 @@ mod load_tests {
             .register_type::<FloorDeclared>()
             .register_type::<AccessDeclared>()
             .register_type::<AccessKind>()
+            .register_type::<NpcDeclared>()
+            .register_type::<NpcKind>()
             .init_asset::<Image>()
             .init_resource::<LevelPrefabCatalog>()
             .init_resource::<LevelRequests>()
@@ -530,6 +549,97 @@ mod load_tests {
             .query_filtered::<Entity, With<ObstacleCollider>>()
             .iter(app.world())
             .count()
+    }
+
+    fn npc_count(app: &mut App) -> usize {
+        app.world_mut()
+            .query_filtered::<Entity, With<crate::npc::Npc>>()
+            .iter(app.world())
+            .count()
+    }
+
+    #[test]
+    fn level_ron_accepts_npc_declarations() {
+        let app = setup();
+        let registry = app.world().resource::<AppTypeRegistry>();
+        let registry = registry.read();
+        let mut deserializer = ron::de::Deserializer::from_str(
+            r#"{
+                "tyconia::levels::LevelIsometric": (
+                    label: "npc_ron",
+                    resources: {},
+                    legend: [],
+                    surface: [],
+                    npcs: [
+                        (position: (12.0, -8.0), patrol: [(64.0, 0.0)], kind: Guard),
+                    ],
+                ),
+            }"#,
+        )
+        .expect("npc level RON should parse");
+        let reflect_deserializer = ReflectDeserializer::new(&registry);
+        let reflected = reflect_deserializer
+            .deserialize(&mut deserializer)
+            .expect("npc level RON should deserialize");
+        let level = LevelIsometric::from_reflect(&*reflected).expect("level should reflect");
+
+        assert_eq!(level.npcs.len(), 1);
+        assert_eq!(level.npcs[0].position, Vec2::new(12.0, -8.0));
+        assert_eq!(level.npcs[0].elevation, 0.0);
+        assert_eq!(level.npcs[0].patrol, vec![Vec2::new(64.0, 0.0)]);
+        assert_eq!(level.npcs[0].kind, NpcKind::Guard);
+    }
+
+    #[test]
+    fn declared_npcs_spawn_beneath_the_level_instance() {
+        let mut app = setup();
+        app.update();
+
+        let mut level = app
+            .world()
+            .resource::<LevelPrefabCatalog>()
+            .prefabs
+            .get("prologue_restaurant_0")
+            .expect("prologue_restaurant_0 should be registered")
+            .level
+            .clone();
+        level.label = "npc_test".into();
+        level.npcs.push(NpcDeclared {
+            position: Vec2::new(12.0, -8.0),
+            elevation: 0.0,
+            patrol: vec![Vec2::new(32.0, 0.0)],
+            kind: NpcKind::Guard,
+        });
+        app.world_mut()
+            .resource_mut::<LevelPrefabCatalog>()
+            .prefabs
+            .insert(
+                "npc_test".into(),
+                LevelPrefab {
+                    path: PathBuf::from("npc_test.ron"),
+                    level,
+                },
+            );
+
+        request(
+            &mut app,
+            LevelRequest::Load {
+                level_label: "npc_test".into(),
+            },
+        );
+
+        assert_eq!(npc_count(&mut app), 1);
+        assert_eq!(instance_count(&mut app), 1);
+
+        let mut query = app
+            .world_mut()
+            .query_filtered::<&Parent, With<crate::npc::Npc>>();
+        let parent = query.single(app.world()).get();
+        let mut instances = app
+            .world_mut()
+            .query_filtered::<Entity, With<LevelInstance>>();
+        let instance = instances.single(app.world());
+        assert_eq!(parent, instance);
     }
 
     #[test]

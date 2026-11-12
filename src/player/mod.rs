@@ -1,4 +1,7 @@
-use crate::actions::{movement::MovementAction, ui::UiAction};
+use crate::actions::{
+    movement::{dispatch_movement_actions, MovementAction},
+    ui::UiAction,
+};
 use crate::levels::*;
 use crate::GameState;
 use bevy::prelude::*;
@@ -13,7 +16,9 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     apply_player_spawn,
-                    move_player.run_if(on_event::<MovementAction>),
+                    move_player
+                        .run_if(on_event::<MovementAction>)
+                        .after(dispatch_movement_actions),
                     sync_player_visual,
                     zoom_camera,
                     //(un_highlight, (hightlight_building /* highlight_tile */,))
@@ -31,6 +36,9 @@ pub struct Player;
 
 #[derive(Component)]
 pub struct PlayerVisual;
+
+#[derive(Component)]
+pub struct PlayerCamera;
 
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct PlayerHeight {
@@ -90,12 +98,13 @@ fn spawn_player(mut commands: Commands) {
                 Transform::default(),
             ));
             children.spawn((
+                PlayerCamera,
                 Camera2d,
-                Projection::Orthographic(OrthographicProjection {
+                OrthographicProjection {
                     near: -LEVEL_Z_BAND * 16.0,
                     far: LEVEL_Z_BAND * 16.0,
                     ..OrthographicProjection::default_2d()
-                }),
+                },
                 Msaa::Off,
                 UiAntiAlias::Off,
                 Transform::from_xyz(0.0, 0.0, 500.0),
@@ -313,17 +322,21 @@ fn move_player(
 
 fn sync_player_visual(
     players: Query<(Entity, &PlayerHeight, &Children), With<Player>>,
-    mut roots: Query<&mut Transform, (With<Player>, Without<PlayerVisual>)>,
-    mut visuals: Query<&mut Transform, With<PlayerVisual>>,
+    mut roots: Query<&mut Transform, (With<Player>, Without<PlayerVisual>, Without<PlayerCamera>)>,
+    mut visuals: Query<&mut Transform, (With<PlayerVisual>, Without<PlayerCamera>)>,
+    mut cameras: Query<&mut Transform, (With<PlayerCamera>, Without<PlayerVisual>)>,
 ) {
     for (entity, height, children) in &players {
         if let Ok(mut transform) = roots.get_mut(entity) {
             transform.translation.z = level_z(height.rank, ACTOR_Z_LAYER, transform.translation.y);
         }
 
+        let elevation_offset = elevation_screen_offset(height.elevation);
         for child in children.iter() {
             if let Ok(mut transform) = visuals.get_mut(*child) {
-                transform.translation.y = elevation_screen_offset(height.elevation);
+                transform.translation.y = elevation_offset;
+            } else if let Ok(mut transform) = cameras.get_mut(*child) {
+                transform.translation.y = elevation_offset;
             }
         }
     }
@@ -332,6 +345,50 @@ fn sync_player_visual(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn player_camera_uses_a_single_orthographic_projection() {
+        let mut app = App::new();
+        app.add_systems(Startup, spawn_player);
+        app.update();
+
+        let mut cameras = app
+            .world_mut()
+            .query_filtered::<&OrthographicProjection, With<Camera2d>>();
+        let projection = cameras.single(app.world());
+        assert_eq!(projection.near, -LEVEL_Z_BAND * 16.0);
+        assert_eq!(projection.far, LEVEL_Z_BAND * 16.0);
+
+        let mut enum_projections = app.world_mut().query::<&Projection>();
+        assert_eq!(enum_projections.iter(app.world()).count(), 0);
+    }
+
+    #[test]
+    fn camera_follows_player_elevation_offset() {
+        let mut app = App::new();
+        app.add_systems(Startup, spawn_player)
+            .add_systems(Update, sync_player_visual);
+        app.update();
+
+        let player = app
+            .world_mut()
+            .query_filtered::<Entity, With<Player>>()
+            .single(app.world());
+        {
+            let mut height = app.world_mut().get_mut::<PlayerHeight>(player).unwrap();
+            height.elevation = 3.0;
+            height.rank = 3;
+        }
+
+        app.update();
+
+        let camera = app
+            .world_mut()
+            .query_filtered::<&Transform, With<PlayerCamera>>()
+            .single(app.world());
+        assert!((camera.translation.y - elevation_screen_offset(3.0)).abs() < 0.001);
+        assert_eq!(camera.translation.z, 500.0);
+    }
 
     #[test]
     fn zoom_easing_is_smooth_and_clamped() {

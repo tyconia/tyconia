@@ -4,6 +4,7 @@ pub mod hud;
 mod levels;
 mod loading;
 mod menu;
+mod npc;
 mod player;
 mod save;
 mod settings;
@@ -21,6 +22,7 @@ use crate::actions::ActionsPlugin;
 use crate::audio::InternalAudioPlugin;
 use crate::loading::LoadingPlugin;
 use crate::menu::MenuPlugin;
+use crate::npc::NpcPlugin;
 use crate::player::PlayerPlugin;
 
 use bevy::app::App;
@@ -107,6 +109,7 @@ impl Plugin for GamePlugin {
                 InternalAudioPlugin,
                 PlayerPlugin,
                 levels::LevelsPlugin,
+                NpcPlugin,
                 StoryPlugin,
                 ui::UiPlugin,
             ));

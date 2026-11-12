@@ -6,9 +6,15 @@ use crate::levels::{
     Level, LevelCollider, LevelInstance, LevelManager, LevelRequest, LevelRequests, LevelVertical,
     ObstacleCollider, RuntimeAccess, COLLIDER_ITEM_ID, FLOOR_SCREEN_RISE, PROP_Z_LAYER,
 };
+use crate::loading::UiAssets;
+use crate::player::{Player, PlayerHeight};
+use crate::ui::{
+    Notification, NotificationChannel, NotificationLevel, NotificationPlacement, NotificationSize,
+};
 use crate::{DeveloperMode, GameState};
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 const MIN_ACCESS_RUN_CELLS: f32 = 1.0;
 
@@ -22,12 +28,22 @@ use authoring::*;
 use gizmos::*;
 pub use grid::IsoGrid;
 
+fn editor_elevation_offset(elevation: f32) -> Vec2 {
+    Vec2::new(0.0, elevation_screen_offset(elevation))
+}
+
+fn editor_cell_at_elevation(grid: &IsoGrid, cursor: Vec2, elevation: f32) -> IVec2 {
+    grid.snap_cell(cursor - editor_elevation_offset(elevation))
+}
+
 pub struct LevelEditorPlugin;
 
 impl Plugin for LevelEditorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<IsoGrid>()
             .init_resource::<LevelEditorState>()
+            .init_resource::<LevelFocus>()
+            .init_resource::<VerticalGizmoCache>()
             .add_systems(OnEnter(GameState::Playing), begin_editor_session)
             .add_systems(OnExit(GameState::Playing), end_editor_session)
             .add_systems(OnEnter(DeveloperMode(true)), enable_editor)
@@ -39,12 +55,20 @@ impl Plugin for LevelEditorPlugin {
             )
             .add_systems(
                 Update,
+                notify_level_change
+                    .after(follow_player_level)
+                    .after(editor_hotkeys)
+                    .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(
+                Update,
                 (
                     follow_player_level,
                     editor_hotkeys,
                     select_editor_item.run_if(editor_active),
                     author_colliders.run_if(editor_active),
                     sync_level_vertical.run_if(editor_active),
+                    cache_vertical_geometry,
                     draw_iso_grid.run_if(editor_active),
                     draw_vertical_geometry.run_if(editor_active),
                 )
@@ -79,6 +103,71 @@ fn follow_player_level(
     }
 }
 
+#[derive(Resource, Default)]
+struct LevelFocus {
+    level: Option<i16>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LevelChange {
+    Up,
+    Down,
+}
+
+fn level_change(previous: i16, current: i16) -> Option<LevelChange> {
+    if current > previous {
+        Some(LevelChange::Up)
+    } else if current < previous {
+        Some(LevelChange::Down)
+    } else {
+        None
+    }
+}
+
+fn focused_level(
+    state: &LevelEditorState,
+    player: &Query<&PlayerHeight, With<Player>>,
+) -> Option<i16> {
+    if state.active {
+        Some(state.level)
+    } else {
+        player.get_single().ok().map(|height| height.rank)
+    }
+}
+
+fn notify_level_change(
+    state: Res<LevelEditorState>,
+    mut focus: ResMut<LevelFocus>,
+    player: Query<&PlayerHeight, With<Player>>,
+    ui: Res<UiAssets>,
+    mut notifications: NotificationChannel,
+) {
+    let Some(level) = focused_level(&state, &player) else {
+        return;
+    };
+    let Some(previous) = focus.level.replace(level) else {
+        return;
+    };
+    let Some(change) = level_change(previous, level) else {
+        return;
+    };
+
+    let icon = match change {
+        LevelChange::Up => ui.level_up_ico.clone(),
+        LevelChange::Down => ui.level_down_ico.clone(),
+    };
+
+    Notification {
+        level: NotificationLevel::Info,
+        title: format!("Y {level}"),
+        description: String::new(),
+        icon: Some(icon),
+        size: NotificationSize::Small,
+        placement: NotificationPlacement::TopRight,
+    }
+    .queue(Some(Duration::from_secs(2)), &mut notifications);
+}
+
 fn enable_editor_from_shortcut(
     keys: Res<ButtonInput<KeyCode>>,
     mut developer_mode: ResMut<NextState<DeveloperMode>>,
@@ -89,7 +178,8 @@ fn enable_editor_from_shortcut(
     }
 }
 
-fn enable_editor(mut state: ResMut<LevelEditorState>) {
+fn enable_editor(mut state: ResMut<LevelEditorState>, mut cache: ResMut<VerticalGizmoCache>) {
+    cache.clear();
     state.active = true;
     state.grid_visible = true;
     info!(
@@ -99,8 +189,10 @@ fn enable_editor(mut state: ResMut<LevelEditorState>) {
 
 fn disable_editor(
     mut state: ResMut<LevelEditorState>,
+    mut cache: ResMut<VerticalGizmoCache>,
     mut inventories: Query<&mut InventoryActive>,
 ) {
+    cache.clear();
     state.active = false;
     state.dragging = false;
     state.drag_start = None;
@@ -157,12 +249,15 @@ impl LevelEditorState {
 fn begin_editor_session(
     mut state: ResMut<LevelEditorState>,
     developer_mode: Res<State<DeveloperMode>>,
+    mut focus: ResMut<LevelFocus>,
 ) {
     state.begin_session(developer_mode.get().0);
+    focus.level = None;
 }
 
-fn end_editor_session(mut state: ResMut<LevelEditorState>) {
+fn end_editor_session(mut state: ResMut<LevelEditorState>, mut focus: ResMut<LevelFocus>) {
     state.end_session();
+    focus.level = None;
 }
 
 fn editor_hotkeys(

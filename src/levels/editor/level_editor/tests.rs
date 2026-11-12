@@ -418,3 +418,63 @@ fn access_tool_connects_active_level_to_the_next_and_removes_by_height() {
     );
     assert!(accesses.is_empty());
 }
+
+#[test]
+fn elevated_cursor_targets_the_cell_under_the_visual_position() {
+    let grid = grid();
+    let elevation = 3.0;
+    let cell = IVec2::new(3, -2);
+    let visual = grid.cell_to_world(cell.as_vec2()) + editor_elevation_offset(elevation);
+
+    assert_eq!(editor_cell_at_elevation(&grid, visual, elevation), cell);
+}
+
+#[test]
+fn visible_grid_bounds_cover_the_viewport() {
+    let grid = grid();
+    let center = Vec2::new(480.0, -320.0);
+    let area = Rect::new(-640.0, -480.0, 640.0, 480.0);
+    let (min, max) = visible_grid_bounds(&grid, center, area);
+
+    for corner in [
+        Vec2::new(area.min.x, area.min.y),
+        Vec2::new(area.min.x, area.max.y),
+        Vec2::new(area.max.x, area.min.y),
+        Vec2::new(area.max.x, area.max.y),
+    ] {
+        let cell = grid.world_to_cell(center + corner);
+        assert!(min.x as f32 + 0.5 <= cell.x);
+        assert!(max.x as f32 + 0.5 >= cell.x);
+        assert!(min.y as f32 + 0.5 <= cell.y);
+        assert!(max.y as f32 + 0.5 >= cell.y);
+    }
+}
+
+#[test]
+fn grid_level_offset_matches_the_floor_rise() {
+    for level in 0..=3 {
+        let elevation = level as f32;
+        assert_eq!(
+            editor_elevation_offset(elevation).y,
+            elevation_screen_offset(elevation)
+        );
+    }
+    assert_eq!(editor_elevation_offset(1.0).y, FLOOR_SCREEN_RISE);
+}
+
+#[test]
+fn level_accents_cycle_without_colliding_between_neighbours() {
+    for rank in 0..LEVEL_ACCENT_COUNT {
+        assert_ne!(level_accent(rank), level_accent(rank + 1));
+    }
+
+    assert_eq!(level_accent(LEVEL_ACCENT_COUNT), level_accent(0));
+    assert_eq!(level_accent(-1), level_accent(LEVEL_ACCENT_COUNT - 1));
+}
+
+#[test]
+fn level_change_reports_direction_and_ignores_equal_levels() {
+    assert_eq!(level_change(0, 1), Some(LevelChange::Up));
+    assert_eq!(level_change(1, 0), Some(LevelChange::Down));
+    assert_eq!(level_change(2, 2), None);
+}
