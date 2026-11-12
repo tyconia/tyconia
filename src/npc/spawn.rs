@@ -92,11 +92,10 @@ pub(super) fn spawn_debug_npc(
         return;
     };
 
-    let position = cursor.0;
-    let elevation = grid
+    let (position, elevation) = grid
         .as_deref()
-        .map(|grid| debug_spawn_elevation(vertical, grid, position))
-        .unwrap_or(0.0);
+        .map(|grid| debug_spawn_point(vertical, grid, cursor.0))
+        .unwrap_or((cursor.0, 0.0));
 
     spawn_npc(
         &mut commands,
@@ -113,25 +112,123 @@ pub(super) fn spawn_debug_npc(
     );
 }
 
-/// Prefer the highest floor under the cursor so debugging works on upper levels.
-fn debug_spawn_elevation(vertical: &LevelVertical, grid: &IsoGrid, position: Vec2) -> f32 {
-    let cell = grid.snap_cell(position);
-    vertical
-        .floors
-        .iter()
-        .filter(|floor| floor.cells.contains(&cell))
-        .map(|floor| floor.elevation)
-        .max_by(f32::total_cmp)
-        .or_else(|| {
-            vertical
-                .accesses
-                .iter()
-                .find_map(|access| access.height_at(grid, position))
-        })
-        .or_else(|| {
-            vertical
-                .sample(grid, position, 0.0)
-                .map(|sample| sample.elevation)
-        })
-        .unwrap_or(0.0)
+/// Find the floor or access under the cursor. Cursor coordinates are in screen
+/// space, so each candidate elevation is removed before snapping to the grid.
+/// This lets the developer spawn guards on upper floors and ramps.
+fn debug_spawn_point(vertical: &LevelVertical, grid: &IsoGrid, cursor: Vec2) -> (Vec2, f32) {
+    let mut best: Option<(Vec2, f32)> = None;
+
+    for floor in &vertical.floors {
+        let position = cursor - Vec2::Y * elevation_screen_offset(floor.elevation);
+        if !floor.cells.contains(&grid.snap_cell(position)) {
+            continue;
+        }
+        if best
+            .map(|(_, elevation)| floor.elevation > elevation)
+            .unwrap_or(true)
+        {
+            best = Some((position, floor.elevation));
+        }
+    }
+
+    if let Some(found) = best {
+        return found;
+    }
+
+    for access in &vertical.accesses {
+        for seed in [access.from_elevation, access.to_elevation] {
+            let mut position = cursor - Vec2::Y * elevation_screen_offset(seed);
+            let mut elevation = seed;
+
+            for _ in 0..4 {
+                let Some(height) = access.height_at(grid, position) else {
+                    break;
+                };
+                elevation = height;
+                position = cursor - Vec2::Y * elevation_screen_offset(height);
+            }
+
+            let Some(height) = access.height_at(grid, position) else {
+                continue;
+            };
+            if (height - elevation).abs() > 0.1 {
+                continue;
+            }
+
+            if best
+                .map(|(_, elevation)| height > elevation)
+                .unwrap_or(true)
+            {
+                best = Some((position, height));
+            }
+        }
+    }
+
+    best.unwrap_or((cursor, 0.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::levels::FloorDeclared;
+
+    fn floor(elevation: f32, rank: i16, cells: &[IVec2]) -> FloorDeclared {
+        FloorDeclared {
+            elevation,
+            rank,
+            cells: cells.to_vec(),
+        }
+    }
+
+    #[test]
+    fn debug_spawn_picks_an_elevated_floor_under_the_cursor() {
+        let grid = IsoGrid::default();
+        let vertical = LevelVertical::from_parts(
+            vec![
+                floor(0.0, 0, &[IVec2::new(0, 0)]),
+                floor(2.0, 2, &[IVec2::new(2, 0)]),
+            ],
+            Vec::new(),
+        );
+        let ground = grid.cell_to_world(Vec2::new(2.0, 0.0));
+        let cursor = ground + Vec2::Y * elevation_screen_offset(2.0);
+
+        let (position, elevation) = debug_spawn_point(&vertical, &grid, cursor);
+
+        assert!((elevation - 2.0).abs() < 0.001);
+        assert!(position.distance(ground) < 0.001);
+    }
+
+    #[test]
+    fn debug_spawn_uses_the_elevated_floor_when_floors_stack() {
+        let grid = IsoGrid::default();
+        let vertical = LevelVertical::from_parts(
+            vec![
+                floor(0.0, 0, &[IVec2::new(1, 1)]),
+                floor(1.0, 1, &[IVec2::new(1, 1)]),
+            ],
+            Vec::new(),
+        );
+        let ground = grid.cell_to_world(Vec2::new(1.0, 1.0));
+
+        let (_, elevation) = debug_spawn_point(
+            &vertical,
+            &grid,
+            ground + Vec2::Y * elevation_screen_offset(1.0),
+        );
+
+        assert!((elevation - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn debug_spawn_falls_back_to_ground_without_a_floor() {
+        let grid = IsoGrid::default();
+        let vertical = LevelVertical::from_parts(Vec::new(), Vec::new());
+        let cursor = Vec2::new(120.0, -40.0);
+
+        let (position, elevation) = debug_spawn_point(&vertical, &grid, cursor);
+
+        assert_eq!(position, cursor);
+        assert_eq!(elevation, 0.0);
+    }
 }

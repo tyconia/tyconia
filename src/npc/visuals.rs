@@ -94,6 +94,7 @@ pub(super) fn npc_debug_gizmos(
     mut gizmos: Gizmos,
     npcs: Query<(
         &GlobalTransform,
+        &NpcHeight,
         &Npc,
         &NpcFacing,
         &NpcVision,
@@ -102,8 +103,9 @@ pub(super) fn npc_debug_gizmos(
         &NpcMode,
     )>,
 ) {
-    for (transform, npc, facing, vision, memory, navigation, mode) in &npcs {
-        let origin = transform.translation().xy();
+    for (transform, height, npc, facing, vision, memory, navigation, mode) in &npcs {
+        let offset = Vec2::Y * elevation_screen_offset(height.elevation);
+        let origin = transform.translation().xy() + offset;
         let facing = facing.0.normalize_or_zero();
         let color = mode_color(*mode, npc.kind);
 
@@ -115,6 +117,7 @@ pub(super) fn npc_debug_gizmos(
         }
 
         if let Some(last_known) = memory.last_known {
+            let last_known = last_known + offset;
             let cross = Vec2::splat(6.0);
             gizmos.line_2d(last_known - cross, last_known + cross, color);
             gizmos.line_2d(
@@ -126,7 +129,7 @@ pub(super) fn npc_debug_gizmos(
         }
 
         if let Some(destination) = navigation.destination {
-            gizmos.line_2d(origin, destination, color.with_alpha(0.5));
+            gizmos.line_2d(origin, destination + offset, color.with_alpha(0.5));
         }
     }
 }
