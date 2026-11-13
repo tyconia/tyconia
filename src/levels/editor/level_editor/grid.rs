@@ -83,6 +83,7 @@ impl IsoGrid {
             vertices: Vec::new(),
             z_min: 0.0,
             height: crate::levels::default_collider_height(),
+            role: OcclusionRole::Facade,
         }
     }
 
@@ -128,6 +129,7 @@ impl IsoGrid {
             vertices: points.iter().map(|point| *point - position).collect(),
             z_min: 0.0,
             height: crate::levels::default_collider_height(),
+            role: OcclusionRole::Facade,
         })
     }
 

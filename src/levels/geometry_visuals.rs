@@ -1,17 +1,20 @@
 use crate::levels::{
-    access_side_direction, elevation_screen_offset, level_z, polygon_signed_area,
-    rank_from_elevation, AccessKind, GroundTransform, IsoGrid, LevelCollider, LevelEditorState,
-    LevelVertical, ObstacleCollider, RuntimeAccess, RuntimeFloor, ACCESS_Z_LAYER,
-    FLOOR_SCREEN_RISE, FLOOR_Z_LAYER, PROP_Z_LAYER,
+    access_side_direction, elevation_screen_offset, iso_corners, level_z, point_in_polygon,
+    polygon_signed_area, rank_from_elevation, AccessKind, GroundTransform, IsoGrid, LevelCollider,
+    LevelEditorState, LevelVertical, ObstacleCollider, OcclusionRole, RuntimeAccess, RuntimeFloor,
+    SceneDeclared, ACCESS_Z_LAYER, FLOOR_SCREEN_RISE, FLOOR_Z_LAYER, GROUND_EPSILON,
+    PLAYER_BODY_HEIGHT, PROP_Z_LAYER,
 };
 use crate::player::{Player, PlayerHeight};
 use crate::GameState;
 use bevy::image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor};
+use bevy::math::Rect;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::sprite::AlphaMode2d;
+use std::collections::HashSet;
 
 mod mesh;
 pub use mesh::stair_step_count;
@@ -26,6 +29,13 @@ const MAX_STAIRS: usize = 16;
 const FADE_RATE: f32 = 10.0;
 const FADE_EPSILON: f32 = 0.005;
 const DIM_ALPHA: f32 = 0.35;
+const XRAY_ALPHA: f32 = 0.22;
+const EDITOR_UPPER_ALPHA: f32 = 0.18;
+const SURFACE_SOLID_MARGIN: f32 = 0.12;
+const OCCLUSION_MARGIN: f32 = 8.0;
+const STRUCTURE_DEPTH_EPSILON: f32 = 0.01;
+const OCCLUSION_PLAYER_HALF_WIDTH: f32 = 18.0;
+const OCCLUSION_BODY_HEIGHT: f32 = PLAYER_BODY_HEIGHT * FLOOR_SCREEN_RISE;
 
 pub struct LevelGeometryVisualsPlugin;
 
@@ -84,6 +94,176 @@ impl AccessVisual {
     }
 }
 
+/// The continuous elevation range a walkable surface occupies. Visibility is
+/// based on this rather than the rounded rank, so ramps do not pop as the
+/// player crosses an elevation boundary.
+#[derive(Component, Clone, Copy)]
+struct SurfaceVisual {
+    min_elevation: f32,
+    max_elevation: f32,
+}
+
+/// Screen-space footprint used to decide whether a surface above the player
+/// would actually cover them.
+#[derive(Component, Clone)]
+enum SurfaceFootprint {
+    Cells(HashSet<IVec2>),
+    Polygon(Vec<Vec2>),
+}
+
+impl SurfaceFootprint {
+    fn contains(&self, grid: &IsoGrid, elevation: f32, point: Vec2) -> bool {
+        match self {
+            SurfaceFootprint::Cells(cells) => {
+                let adjusted = point - Vec2::Y * elevation_screen_offset(elevation);
+                cells.contains(&grid.snap_cell(adjusted))
+            }
+            SurfaceFootprint::Polygon(vertices) => point_in_polygon(point, vertices),
+        }
+    }
+
+    /// Probe slightly around the player so walking along a surface edge does
+    /// not rapidly toggle the fade.
+    fn occludes(&self, grid: &IsoGrid, elevation: f32, point: Vec2) -> bool {
+        const PROBES: [Vec2; 5] = [Vec2::ZERO, Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y];
+
+        PROBES
+            .iter()
+            .any(|direction| self.contains(grid, elevation, point + *direction * OCCLUSION_MARGIN))
+    }
+}
+
+/// Screen-space footprint of a structure volume. Cells are resolved through the
+/// iso grid, polygons are already in world/screen space.
+#[derive(Clone, Debug)]
+pub enum OcclusionFootprint {
+    Cells(HashSet<IVec2>),
+    Polygon(Vec<Vec2>),
+}
+
+impl OcclusionFootprint {
+    pub fn contains_ground(&self, grid: &IsoGrid, point: Vec2) -> bool {
+        match self {
+            Self::Cells(cells) => cells.contains(&grid.snap_cell(point)),
+            Self::Polygon(points) => point_in_polygon(point, points),
+        }
+    }
+
+    fn ground_bounds(&self, grid: &IsoGrid) -> Option<Rect> {
+        match self {
+            Self::Cells(cells) => {
+                let mut min = Vec2::splat(f32::INFINITY);
+                let mut max = Vec2::splat(f32::NEG_INFINITY);
+                for cell in cells {
+                    let center = grid.cell_to_world(cell.as_vec2());
+                    min = min.min(center);
+                    max = max.max(center);
+                }
+                if !min.is_finite() || !max.is_finite() {
+                    return None;
+                }
+
+                let pad = Vec2::new(
+                    grid.step_u().x.abs().max(grid.step_v().x.abs()),
+                    grid.step_u().y.abs().max(grid.step_v().y.abs()),
+                ) * 0.5;
+                Some(Rect::from_corners(min - pad, max + pad))
+            }
+            Self::Polygon(points) => {
+                if points.is_empty() {
+                    return None;
+                }
+                let mut min = Vec2::splat(f32::INFINITY);
+                let mut max = Vec2::splat(f32::NEG_INFINITY);
+                for point in points {
+                    min = min.min(*point);
+                    max = max.max(*point);
+                }
+                Some(Rect::from_corners(min, max))
+            }
+        }
+    }
+
+    /// Following `level_z`, smaller ground Y values are closer to the camera.
+    fn front_y(&self, grid: &IsoGrid) -> f32 {
+        self.ground_bounds(grid)
+            .map(|bounds| bounds.min.y)
+            .unwrap_or(f32::INFINITY)
+    }
+}
+
+/// A structure that participates in the elevation-aware cutaway rules.
+/// Floors and accesses use `SurfaceVisual`; buildings use this component.
+#[derive(Component, Clone, Debug)]
+pub struct StructureOcclusion {
+    pub footprint: OcclusionFootprint,
+    pub z_min: f32,
+    pub z_max: f32,
+    pub role: OcclusionRole,
+}
+
+impl StructureOcclusion {
+    pub fn from_scene(scene: &SceneDeclared) -> Option<Self> {
+        let occlusion = scene.occlusion.as_ref()?;
+        let points = if occlusion.footprint.is_empty() {
+            iso_corners(occlusion.half_extents)
+                .map(|point| point * scene.scale + scene.position)
+                .to_vec()
+        } else {
+            occlusion
+                .footprint
+                .iter()
+                .map(|point| *point * scene.scale + scene.position)
+                .collect()
+        };
+
+        Some(Self {
+            footprint: OcclusionFootprint::Polygon(points),
+            z_min: occlusion.z_min,
+            z_max: occlusion.z_min + occlusion.height.max(0.01),
+            role: occlusion.role,
+        })
+    }
+
+    pub fn from_collider(collider: &ObstacleCollider, ground: &GroundTransform) -> Self {
+        Self {
+            footprint: OcclusionFootprint::Polygon(ground.world_corners(collider)),
+            z_min: collider.z_min,
+            z_max: collider.z_max(),
+            role: collider.role,
+        }
+    }
+
+    fn screen_bounds(&self, grid: &IsoGrid) -> Option<Rect> {
+        let ground = self.footprint.ground_bounds(grid)?;
+        let low_elevation = self.z_min.min(self.z_max);
+        let high_elevation = self.z_min.max(self.z_max);
+        let min = Vec2::new(
+            ground.min.x,
+            ground.min.y + elevation_screen_offset(low_elevation),
+        );
+        let max = Vec2::new(
+            ground.max.x,
+            ground.max.y + elevation_screen_offset(high_elevation),
+        );
+        Some(Rect::from_corners(min, max))
+    }
+}
+
+#[derive(Clone, Copy)]
+struct StructurePlayer {
+    screen: Vec2,
+    ground: Vec2,
+    elevation: f32,
+}
+
+#[derive(Clone, Copy)]
+struct VisualFocus {
+    elevation: f32,
+    rank: i16,
+    editor: bool,
+}
+
 fn setup_geometry_assets(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     let checker_texture = images.add(checker_image());
     commands.insert_resource(GeometryMaterials { checker_texture });
@@ -106,19 +286,210 @@ fn checker_material(
     })
 }
 
-fn visual_focus(state: &LevelEditorState, player: Option<&PlayerHeight>) -> Option<i16> {
+fn visual_focus(state: &LevelEditorState, player: Option<&PlayerHeight>) -> Option<VisualFocus> {
     if state.active {
-        Some(state.level)
+        Some(VisualFocus {
+            elevation: state.level as f32,
+            rank: state.level,
+            editor: true,
+        })
     } else {
-        player.map(|height| height.rank)
+        player.map(|height| VisualFocus {
+            elevation: height.elevation,
+            rank: height.rank,
+            editor: false,
+        })
     }
 }
 
-fn visual_target_alpha(rank: i16, focus: Option<i16>, editor: bool) -> f32 {
+/// Visibility for props, actors, and scene sprites, which keep the original
+/// rank cutaway behavior.
+fn ranked_target_alpha(rank: i16, focus: Option<VisualFocus>) -> f32 {
     let Some(focus) = focus else {
         return 0.0;
     };
-    target_alpha(visual_readability(rank, focus, editor))
+
+    if focus.editor {
+        match focus.rank - rank {
+            0 => 1.0,
+            1 => DIM_ALPHA,
+            _ => 0.0,
+        }
+    } else if rank > focus.rank {
+        0.0
+    } else {
+        1.0
+    }
+}
+
+/// Visibility for walkable surfaces. In gameplay, an upper surface stays solid
+/// unless its footprint covers the player, in which case it becomes an x-ray
+/// layer. The editor keeps the focused floor solid and shows one floor above
+/// and below for context.
+fn surface_target_alpha(
+    surface: &SurfaceVisual,
+    footprint: Option<&SurfaceFootprint>,
+    focus: Option<VisualFocus>,
+    grid: &IsoGrid,
+    player_screen: Option<Vec2>,
+) -> f32 {
+    let Some(focus) = focus else {
+        return 0.0;
+    };
+
+    if focus.editor {
+        let current = surface.min_elevation <= focus.elevation + 0.5
+            && surface.max_elevation >= focus.elevation - 0.5;
+        if current {
+            return 1.0;
+        }
+
+        let below = focus.elevation - surface.max_elevation;
+        if below > 0.5 && below <= 1.5 {
+            return DIM_ALPHA;
+        }
+
+        let above = surface.min_elevation - focus.elevation;
+        if above > 0.5 && above <= 1.5 {
+            return EDITOR_UPPER_ALPHA;
+        }
+
+        return 0.0;
+    }
+
+    if surface.min_elevation <= focus.elevation + SURFACE_SOLID_MARGIN {
+        return 1.0;
+    }
+
+    match (footprint, player_screen) {
+        (Some(footprint), Some(player_screen))
+            if footprint.occludes(grid, surface.min_elevation, player_screen) =>
+        {
+            XRAY_ALPHA
+        }
+        _ => 1.0,
+    }
+}
+
+fn player_structure_pose(player: Option<(&Transform, &PlayerHeight)>) -> Option<StructurePlayer> {
+    player.map(|(transform, height)| StructurePlayer {
+        screen: transform.translation.xy() + Vec2::Y * elevation_screen_offset(height.elevation),
+        ground: transform.translation.xy(),
+        elevation: height.elevation,
+    })
+}
+
+fn player_body_rect(player: StructurePlayer) -> Rect {
+    let size = Vec2::new(
+        OCCLUSION_PLAYER_HALF_WIDTH * 2.0 + OCCLUSION_MARGIN * 2.0,
+        OCCLUSION_BODY_HEIGHT + OCCLUSION_MARGIN * 2.0,
+    );
+    Rect::from_center_size(player.screen, size)
+}
+
+fn rect_coverage(bounds: Rect, body: Rect) -> f32 {
+    let overlap = bounds.intersect(body);
+    if overlap.width() <= 0.0 || overlap.height() <= 0.0 {
+        return 0.0;
+    }
+
+    let body_area = body.width() * body.height();
+    if body_area <= f32::EPSILON {
+        return 0.0;
+    }
+
+    ((overlap.width() * overlap.height()) / body_area).clamp(0.0, 1.0)
+}
+
+fn editor_structure_alpha(structure: &StructureOcclusion, focus: VisualFocus) -> f32 {
+    let current =
+        structure.z_min <= focus.elevation + 0.5 && structure.z_max >= focus.elevation - 0.5;
+    if current {
+        return 1.0;
+    }
+
+    let below = focus.elevation - structure.z_max;
+    if below > 0.5 && below <= 1.5 {
+        return DIM_ALPHA;
+    }
+
+    let above = structure.z_min - focus.elevation;
+    if above > 0.5 && above <= 1.5 {
+        return EDITOR_UPPER_ALPHA;
+    }
+
+    0.0
+}
+
+/// Visibility for buildings and other solid structure volumes.
+///
+/// Unlike the legacy rank cutaway, this uses the player's continuous elevation
+/// and the structure's vertical span:
+/// - a structure entirely below the player stays solid context,
+/// - a roof/ceiling above an inside player is removed so the interior opens up,
+/// - an upper storey covering an inside player becomes an x-ray layer,
+/// - a facade intersecting the player and sitting in front of them is ghosted
+///   only around the screen-space player body.
+fn structure_target_alpha(
+    structure: &StructureOcclusion,
+    focus: Option<VisualFocus>,
+    grid: &IsoGrid,
+    player: Option<StructurePlayer>,
+) -> f32 {
+    let Some(focus) = focus else {
+        return 0.0;
+    };
+    if focus.editor {
+        return editor_structure_alpha(structure, focus);
+    }
+
+    let Some(player) = player else {
+        return 0.0;
+    };
+
+    let feet = player.elevation;
+    let head = feet + PLAYER_BODY_HEIGHT;
+    let body = player_body_rect(player);
+    let Some(bounds) = structure.screen_bounds(grid) else {
+        return 1.0;
+    };
+    let overlap = rect_coverage(bounds, body);
+    let covers_ground = structure.footprint.contains_ground(grid, player.ground);
+    let is_roof = structure.role.is_roof_like();
+    let entirely_above = structure.z_min >= head - GROUND_EPSILON;
+    let entirely_below = structure.z_max <= feet + GROUND_EPSILON;
+    let intersects_body = structure.z_min < head && structure.z_max > feet;
+    let in_front = structure.footprint.front_y(grid) < player.ground.y - STRUCTURE_DEPTH_EPSILON;
+
+    if is_roof && covers_ground && entirely_above {
+        return 0.0;
+    }
+
+    if entirely_below {
+        return 1.0;
+    }
+
+    if entirely_above {
+        if covers_ground {
+            return XRAY_ALPHA;
+        }
+        if is_roof && in_front && overlap > 0.0 {
+            return XRAY_ALPHA;
+        }
+        return 1.0;
+    }
+
+    if intersects_body && in_front && overlap > 0.0 {
+        return (1.0 - overlap * (1.0 - XRAY_ALPHA)).clamp(XRAY_ALPHA, 1.0);
+    }
+
+    1.0
+}
+
+fn player_screen_position(player: Option<(&Transform, &PlayerHeight)>) -> Option<Vec2> {
+    player.map(|(transform, height)| {
+        transform.translation.xy() + Vec2::Y * elevation_screen_offset(height.elevation)
+    })
 }
 
 fn iso_uv(grid: &IsoGrid, world: Vec2) -> Vec2 {
@@ -175,12 +546,13 @@ fn sync_collider_meshes(
     materials: Res<GeometryMaterials>,
     mut color_materials: ResMut<Assets<ColorMaterial>>,
     state: Res<LevelEditorState>,
-    player: Query<&PlayerHeight, With<Player>>,
+    player: Query<(&Transform, &PlayerHeight), With<Player>>,
     grid: Res<IsoGrid>,
     mut colliders: Query<
         (Entity, &ObstacleCollider, &GroundTransform, &mut Transform),
         (
             With<LevelCollider>,
+            Without<Player>,
             Or<(
                 Added<LevelCollider>,
                 Changed<ObstacleCollider>,
@@ -189,17 +561,25 @@ fn sync_collider_meshes(
         ),
     >,
 ) {
-    let focus = visual_focus(&state, player.get_single().ok());
+    let player = player.get_single().ok();
+    let focus = visual_focus(&state, player.map(|(_, height)| height));
+    let structure_player = player_structure_pose(player);
 
     for (entity, collider, ground, mut transform) in &mut colliders {
         let rank = rank_from_elevation(collider.z_min);
         transform.translation.z = level_z(rank, PROP_Z_LAYER, ground.position.y);
         let mesh = build_collider_mesh(&grid, collider, ground);
-        let alpha = visual_target_alpha(rank, focus, state.active);
+        let structure = StructureOcclusion::from_collider(collider, ground);
+        let alpha = if collider.role == OcclusionRole::Prop {
+            ranked_target_alpha(rank, focus)
+        } else {
+            structure_target_alpha(&structure, focus, &grid, structure_player)
+        };
         let material = checker_material(&mut color_materials, &materials.checker_texture, alpha);
         commands.entity(entity).insert((
             ColliderMeshVisual,
             RankedVisual { rank },
+            structure,
             VisualFade { alpha },
             Mesh2d(meshes.add(mesh)),
             MeshMaterial2d(material),
@@ -213,12 +593,14 @@ fn sync_vertical_meshes(
     materials: Res<GeometryMaterials>,
     mut color_materials: ResMut<Assets<ColorMaterial>>,
     state: Res<LevelEditorState>,
-    player: Query<&PlayerHeight, With<Player>>,
+    player: Query<(&Transform, &PlayerHeight), With<Player>>,
     grid: Res<IsoGrid>,
     instances: Query<(Entity, &LevelVertical), Changed<LevelVertical>>,
     old_visuals: Query<(Entity, &Parent), With<VerticalMeshVisual>>,
 ) {
-    let focus = visual_focus(&state, player.get_single().ok());
+    let player = player.get_single().ok();
+    let focus = visual_focus(&state, player.map(|(_, height)| height));
+    let player_screen = player_screen_position(player);
 
     for (instance_entity, vertical) in &instances {
         for (visual, parent) in &old_visuals {
@@ -241,13 +623,21 @@ fn sync_vertical_meshes(
             };
             let rank = floor.rank;
             let z = level_z(rank, FLOOR_Z_LAYER, ground_y);
-            let alpha = visual_target_alpha(rank, focus, state.active);
+            let surface = SurfaceVisual {
+                min_elevation: floor.elevation,
+                max_elevation: floor.elevation,
+            };
+            let footprint = SurfaceFootprint::Cells(floor.cells.iter().copied().collect());
+            let alpha =
+                surface_target_alpha(&surface, Some(&footprint), focus, &grid, player_screen);
             let material =
                 checker_material(&mut color_materials, &materials.checker_texture, alpha);
             commands.entity(instance_entity).with_children(|parent| {
                 parent.spawn((
                     VerticalMeshVisual,
                     RankedVisual { rank },
+                    surface,
+                    footprint.clone(),
                     VisualFade { alpha },
                     Mesh2d(meshes.add(mesh)),
                     MeshMaterial2d(material),
@@ -270,16 +660,24 @@ fn sync_vertical_meshes(
                 ground_y,
             };
             let rank = focus
-                .map(|focus| access_visual.display_rank(focus))
+                .map(|focus| access_visual.display_rank(focus.rank))
                 .unwrap_or(lower_rank);
             let z = level_z(rank, ACCESS_Z_LAYER, ground_y);
-            let alpha = visual_target_alpha(rank, focus, state.active);
+            let surface = SurfaceVisual {
+                min_elevation: access.from_elevation.min(access.to_elevation),
+                max_elevation: access.from_elevation.max(access.to_elevation),
+            };
+            let footprint = SurfaceFootprint::Polygon(access_screen_footprint(&grid, access));
+            let alpha =
+                surface_target_alpha(&surface, Some(&footprint), focus, &grid, player_screen);
             let material =
                 checker_material(&mut color_materials, &materials.checker_texture, alpha);
             commands.entity(instance_entity).with_children(|parent| {
                 parent.spawn((
                     VerticalMeshVisual,
                     access_visual,
+                    surface,
+                    footprint.clone(),
                     RankedVisual { rank },
                     VisualFade { alpha },
                     Mesh2d(meshes.add(mesh)),
@@ -291,64 +689,90 @@ fn sync_vertical_meshes(
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum VisualReadability {
-    Normal,
-    Dim,
-    Hidden,
-}
+/// Screen-space trapezoid covering the top of a ramp or staircase.
+fn access_screen_footprint(grid: &IsoGrid, access: &RuntimeAccess) -> Vec<Vec2> {
+    let (low_ground, high_ground, low_elevation, high_elevation) =
+        if access.from_elevation <= access.to_elevation {
+            (
+                access.from,
+                access.to,
+                access.from_elevation,
+                access.to_elevation,
+            )
+        } else {
+            (
+                access.to,
+                access.from,
+                access.to_elevation,
+                access.from_elevation,
+            )
+        };
+    let side = access_side_direction(grid, access.from, access.to) * access.width * 0.5;
+    let low = low_ground + Vec2::Y * elevation_screen_offset(low_elevation);
+    let high = high_ground + Vec2::Y * elevation_screen_offset(high_elevation);
 
-fn visual_readability(rank: i16, focus: i16, editor: bool) -> VisualReadability {
-    if editor {
-        match focus - rank {
-            0 => VisualReadability::Normal,
-            1 => VisualReadability::Dim,
-            _ => VisualReadability::Hidden,
-        }
-    } else if rank > focus {
-        VisualReadability::Hidden
-    } else {
-        VisualReadability::Normal
-    }
-}
-
-fn target_alpha(readability: VisualReadability) -> f32 {
-    match readability {
-        VisualReadability::Normal => 1.0,
-        VisualReadability::Dim => DIM_ALPHA,
-        VisualReadability::Hidden => 0.0,
-    }
+    vec![low + side, high + side, high - side, low - side]
 }
 
 fn update_ranked_visuals(
     state: Res<LevelEditorState>,
-    player: Query<&PlayerHeight, With<Player>>,
+    grid: Res<IsoGrid>,
+    player: Query<(&Transform, &PlayerHeight), With<Player>>,
     time: Res<Time>,
     mut color_materials: ResMut<Assets<ColorMaterial>>,
-    mut visuals: Query<(
-        &mut RankedVisual,
-        &mut VisualFade,
-        &mut Visibility,
-        &mut Transform,
-        Option<&AccessVisual>,
-        Option<&mut MeshMaterial2d<ColorMaterial>>,
-        Option<&mut Sprite>,
-    )>,
+    mut visuals: Query<
+        (
+            &mut RankedVisual,
+            &mut VisualFade,
+            &mut Visibility,
+            &mut Transform,
+            Option<&AccessVisual>,
+            Option<&SurfaceVisual>,
+            Option<&SurfaceFootprint>,
+            Option<&StructureOcclusion>,
+            Option<&mut MeshMaterial2d<ColorMaterial>>,
+            Option<&mut Sprite>,
+        ),
+        Without<Player>,
+    >,
 ) {
-    let focus = visual_focus(&state, player.get_single().ok()).unwrap_or(0);
+    let player = player.get_single().ok();
+    let focus = visual_focus(&state, player.map(|(_, height)| height));
+    let player_screen = player_screen_position(player);
+    let structure_player = player_structure_pose(player);
+    let focus_rank = focus.map(|focus| focus.rank).unwrap_or(0);
     let smoothing = 1.0 - (-FADE_RATE * time.delta_secs()).exp();
 
-    for (mut ranked, mut fade, mut visibility, mut transform, access, material, sprite) in
-        &mut visuals
+    for (
+        mut ranked,
+        mut fade,
+        mut visibility,
+        mut transform,
+        access,
+        surface,
+        footprint,
+        structure,
+        material,
+        sprite,
+    ) in &mut visuals
     {
         if let Some(access) = access {
-            let display_rank = access.display_rank(focus);
+            let display_rank = access.display_rank(focus_rank);
             ranked.rank = display_rank;
             transform.translation.z = level_z(display_rank, ACCESS_Z_LAYER, access.ground_y);
         }
 
-        let readability = visual_readability(ranked.rank, focus, state.active);
-        let target = target_alpha(readability);
+        let target = if let Some(structure) = structure {
+            if structure.role == OcclusionRole::Prop {
+                ranked_target_alpha(ranked.rank, focus)
+            } else {
+                structure_target_alpha(structure, focus, &grid, structure_player)
+            }
+        } else if let Some(surface) = surface {
+            surface_target_alpha(surface, footprint, focus, &grid, player_screen)
+        } else {
+            ranked_target_alpha(ranked.rank, focus)
+        };
         fade.alpha += (target - fade.alpha) * smoothing;
         if (target - fade.alpha).abs() <= FADE_EPSILON {
             fade.alpha = target;
@@ -506,31 +930,266 @@ mod tests {
         assert!(near < level_z(1, FLOOR_Z_LAYER, 0.0));
     }
 
-    #[test]
-    fn editor_readability_dims_lower_adjacent_and_hides_upper_ranks() {
-        assert_eq!(visual_readability(2, 2, true), VisualReadability::Normal);
-        assert_eq!(visual_readability(3, 2, true), VisualReadability::Hidden);
-        assert_eq!(visual_readability(4, 2, true), VisualReadability::Hidden);
-        assert_eq!(visual_readability(1, 2, true), VisualReadability::Dim);
-        assert_eq!(visual_readability(0, 2, true), VisualReadability::Hidden);
+    fn focus(elevation: f32, editor: bool) -> VisualFocus {
+        VisualFocus {
+            elevation,
+            rank: rank_from_elevation(elevation),
+            editor,
+        }
+    }
+
+    fn surface(elevation: f32) -> SurfaceVisual {
+        SurfaceVisual {
+            min_elevation: elevation,
+            max_elevation: elevation,
+        }
+    }
+
+    fn structure(
+        points: Vec<Vec2>,
+        z_min: f32,
+        z_max: f32,
+        role: OcclusionRole,
+    ) -> StructureOcclusion {
+        StructureOcclusion {
+            footprint: OcclusionFootprint::Polygon(points),
+            z_min,
+            z_max,
+            role,
+        }
+    }
+
+    fn structure_player(ground: Vec2, elevation: f32) -> StructurePlayer {
+        StructurePlayer {
+            screen: ground + Vec2::Y * elevation_screen_offset(elevation),
+            ground,
+            elevation,
+        }
+    }
+
+    fn player_building(offset: Vec2) -> Vec<Vec2> {
+        iso_corners(Vec2::splat(24.0))
+            .map(|point| point + offset)
+            .to_vec()
     }
 
     #[test]
-    fn gameplay_cutaway_hides_all_ranks_above_the_player() {
-        assert_eq!(visual_readability(2, 2, false), VisualReadability::Normal);
-        assert_eq!(visual_readability(3, 2, false), VisualReadability::Hidden);
-        assert_eq!(visual_readability(4, 2, false), VisualReadability::Hidden);
-        assert_eq!(visual_readability(1, 2, false), VisualReadability::Normal);
+    fn foreground_structure_ghosts_only_where_it_covers_the_player() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let structure = structure(
+            player_building(ground + Vec2::new(0.0, -16.0)),
+            0.0,
+            1.0,
+            OcclusionRole::Facade,
+        );
+        let player = structure_player(ground, 0.0);
+
+        let alpha =
+            structure_target_alpha(&structure, Some(focus(0.0, false)), &grid, Some(player));
+
+        assert!((XRAY_ALPHA..1.0).contains(&alpha), "alpha was {alpha}");
     }
 
     #[test]
-    fn fade_targets_match_readability() {
-        assert_eq!(target_alpha(VisualReadability::Normal), 1.0);
-        assert_eq!(target_alpha(VisualReadability::Dim), DIM_ALPHA);
-        assert_eq!(target_alpha(VisualReadability::Hidden), 0.0);
-        assert_eq!(visual_target_alpha(3, Some(2), false), 0.0);
-        assert_eq!(visual_target_alpha(2, Some(2), false), 1.0);
-        assert_eq!(visual_target_alpha(2, None, false), 0.0);
+    fn structure_below_the_player_stays_solid_context() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let structure = structure(player_building(ground), -2.0, -0.2, OcclusionRole::Facade);
+        let player = structure_player(ground, 0.0);
+
+        assert_eq!(
+            structure_target_alpha(&structure, Some(focus(0.0, false)), &grid, Some(player)),
+            1.0
+        );
+    }
+
+    #[test]
+    fn roof_above_an_inside_player_is_removed() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let structure = structure(player_building(ground), 2.0, 2.5, OcclusionRole::Roof);
+        let player = structure_player(ground, 0.0);
+
+        assert_eq!(
+            structure_target_alpha(&structure, Some(focus(0.0, false)), &grid, Some(player)),
+            0.0
+        );
+    }
+
+    #[test]
+    fn upper_storey_over_an_inside_player_becomes_xray() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let structure = structure(player_building(ground), 2.0, 2.5, OcclusionRole::Interior);
+        let player = structure_player(ground, 1.0);
+
+        assert_eq!(
+            structure_target_alpha(&structure, Some(focus(1.0, false)), &grid, Some(player)),
+            XRAY_ALPHA
+        );
+    }
+
+    #[test]
+    fn structure_editor_focus_shows_current_and_adjacent_bands() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let player = structure_player(ground, 1.0);
+        let editor = focus(1.0, true);
+
+        let current = structure(player_building(ground), 0.0, 2.0, OcclusionRole::Facade);
+        let below = structure(player_building(ground), -0.2, 0.0, OcclusionRole::Facade);
+        let above = structure(player_building(ground), 2.0, 2.5, OcclusionRole::Facade);
+
+        assert_eq!(
+            structure_target_alpha(&current, Some(editor), &grid, Some(player)),
+            1.0
+        );
+        assert_eq!(
+            structure_target_alpha(&below, Some(editor), &grid, Some(player)),
+            DIM_ALPHA
+        );
+        assert_eq!(
+            structure_target_alpha(&above, Some(editor), &grid, Some(player)),
+            EDITOR_UPPER_ALPHA
+        );
+    }
+
+    #[test]
+    fn scene_occlusion_uses_local_footprint_and_height() {
+        let scene = SceneDeclared {
+            asset: "building.png".into(),
+            position: Vec2::new(10.0, 20.0),
+            scale: 1.0,
+            z: 0.0,
+            elevation: 1.0,
+            occlusion: Some(crate::levels::SceneOcclusionDeclared {
+                z_min: 1.0,
+                height: 2.0,
+                footprint: vec![
+                    Vec2::new(-8.0, -8.0),
+                    Vec2::new(8.0, -8.0),
+                    Vec2::new(8.0, 8.0),
+                    Vec2::new(-8.0, 8.0),
+                ],
+                half_extents: Vec2::ZERO,
+                role: OcclusionRole::Roof,
+            }),
+        };
+        let structure = StructureOcclusion::from_scene(&scene).expect("scene should occlude");
+
+        assert_eq!(structure.z_min, 1.0);
+        assert_eq!(structure.z_max, 3.0);
+        assert_eq!(structure.role, OcclusionRole::Roof);
+        let OcclusionFootprint::Polygon(points) = structure.footprint else {
+            panic!("scene footprints should be polygons");
+        };
+        assert!(points.contains(&Vec2::new(2.0, 12.0)));
+        assert!(points.contains(&Vec2::new(18.0, 28.0)));
+    }
+
+    #[test]
+    fn ranked_visibility_keeps_props_at_or_below_the_player() {
+        let focus = focus(2.0, false);
+
+        assert_eq!(ranked_target_alpha(2, Some(focus)), 1.0);
+        assert_eq!(ranked_target_alpha(1, Some(focus)), 1.0);
+        assert_eq!(ranked_target_alpha(3, Some(focus)), 0.0);
+        assert_eq!(ranked_target_alpha(2, None), 0.0);
+    }
+
+    #[test]
+    fn editor_surfaces_show_the_current_and_adjacent_floors() {
+        let grid = IsoGrid::default();
+        let focus = focus(2.0, true);
+
+        assert_eq!(
+            surface_target_alpha(&surface(2.0), None, Some(focus), &grid, None),
+            1.0
+        );
+        assert_eq!(
+            surface_target_alpha(&surface(1.0), None, Some(focus), &grid, None),
+            DIM_ALPHA
+        );
+        assert_eq!(
+            surface_target_alpha(&surface(3.0), None, Some(focus), &grid, None),
+            EDITOR_UPPER_ALPHA
+        );
+        assert_eq!(
+            surface_target_alpha(&surface(0.0), None, Some(focus), &grid, None),
+            0.0
+        );
+        assert_eq!(
+            surface_target_alpha(&surface(4.0), None, Some(focus), &grid, None),
+            0.0
+        );
+    }
+
+    #[test]
+    fn upper_surfaces_stay_solid_when_they_do_not_cover_the_player() {
+        let grid = IsoGrid::default();
+        let focus = focus(0.0, false);
+        let surface = surface(2.0);
+        let footprint = SurfaceFootprint::Cells([IVec2::ZERO].into_iter().collect::<HashSet<_>>());
+        let player_screen = grid.cell_to_world(Vec2::new(5.0, 0.0));
+
+        assert_eq!(
+            surface_target_alpha(
+                &surface,
+                Some(&footprint),
+                Some(focus),
+                &grid,
+                Some(player_screen)
+            ),
+            1.0
+        );
+    }
+
+    #[test]
+    fn upper_surfaces_become_xray_when_they_cover_the_player() {
+        let grid = IsoGrid::default();
+        let focus = focus(0.0, false);
+        let surface = surface(2.0);
+        let footprint = SurfaceFootprint::Cells([IVec2::ZERO].into_iter().collect::<HashSet<_>>());
+        let player_screen = Vec2::Y * elevation_screen_offset(2.0);
+
+        assert_eq!(
+            surface_target_alpha(
+                &surface,
+                Some(&footprint),
+                Some(focus),
+                &grid,
+                Some(player_screen)
+            ),
+            XRAY_ALPHA
+        );
+    }
+
+    #[test]
+    fn occlusion_probes_add_a_small_margin_at_surface_edges() {
+        let grid = IsoGrid::default();
+        let footprint = SurfaceFootprint::Cells([IVec2::ZERO].into_iter().collect::<HashSet<_>>());
+        let just_outside = grid.cell_to_world(Vec2::ZERO) + Vec2::X * 36.0;
+
+        assert!(!footprint.contains(&grid, 0.0, just_outside));
+        assert!(footprint.occludes(&grid, 0.0, just_outside));
+    }
+
+    #[test]
+    fn access_footprint_tracks_the_ramp_surface() {
+        let grid = IsoGrid::default();
+        let access = RuntimeAccess {
+            from: grid.cell_to_world(Vec2::ZERO),
+            to: grid.cell_to_world(Vec2::new(2.0, 0.0)),
+            width: grid.step_u().length(),
+            from_elevation: 0.0,
+            to_elevation: 1.0,
+            kind: AccessKind::Ramp,
+        };
+        let footprint = SurfaceFootprint::Polygon(access_screen_footprint(&grid, &access));
+        let midpoint = (access.from + access.to) * 0.5 + Vec2::Y * elevation_screen_offset(0.5);
+
+        assert!(footprint.contains(&grid, 0.5, midpoint));
     }
 
     #[test]
@@ -545,13 +1204,6 @@ mod tests {
         assert_eq!(access.display_rank(1), 1);
         assert_eq!(access.display_rank(3), 3);
         assert_eq!(access.display_rank(4), 2);
-
-        let rank = access.display_rank(3);
-        assert_eq!(
-            visual_readability(rank, 3, false),
-            VisualReadability::Normal
-        );
-        assert_eq!(visual_readability(rank, 3, true), VisualReadability::Normal);
     }
 
     #[test]

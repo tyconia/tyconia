@@ -4,7 +4,8 @@ use crate::levels::{
     polygon_signed_area, rank_from_elevation, stair_step_count, AccessDeclared, AccessKind,
     ColliderDeclared, CurrentLevel, FloorDeclared, GroundTransform, Inventory, InventoryActive,
     Level, LevelCollider, LevelInstance, LevelManager, LevelRequest, LevelRequests, LevelVertical,
-    ObstacleCollider, RuntimeAccess, COLLIDER_ITEM_ID, FLOOR_SCREEN_RISE, PROP_Z_LAYER,
+    ObstacleCollider, OcclusionRole, RuntimeAccess, COLLIDER_ITEM_ID, FLOOR_SCREEN_RISE,
+    PROP_Z_LAYER,
 };
 use crate::loading::UiAssets;
 use crate::player::{Player, PlayerHeight};

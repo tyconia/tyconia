@@ -2,8 +2,8 @@ use crate::GameState;
 use crate::{
     elevation_screen_offset, level_z, rank_from_elevation, AccessDeclared, AccessKind,
     ColliderDeclared, FloorDeclared, GroundTransform, Level, LevelIsometric, LevelManager,
-    LevelVertical, NpcDeclared, NpcKind, ObstacleCollider, RankedVisual, SceneDeclared, VisualFade,
-    PROP_Z_LAYER,
+    LevelVertical, NpcDeclared, NpcKind, ObstacleCollider, OcclusionRole, RankedVisual,
+    SceneDeclared, SceneOcclusionDeclared, StructureOcclusion, VisualFade, PROP_Z_LAYER,
 };
 use bevy::prelude::*;
 use bevy::reflect::serde::{ReflectDeserializer, ReflectSerializer};
@@ -18,6 +18,8 @@ impl Plugin for LevelLoaderPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<LevelIsometric>()
             .register_type::<SceneDeclared>()
+            .register_type::<SceneOcclusionDeclared>()
+            .register_type::<OcclusionRole>()
             .register_type::<ColliderDeclared>()
             .register_type::<FloorDeclared>()
             .register_type::<AccessDeclared>()
@@ -316,8 +318,9 @@ fn load_prefab(
         let image = asset_server.load(scene.asset.clone());
         let visual_y = scene.position.y + elevation_screen_offset(scene.elevation);
         let rank = rank_from_elevation(scene.elevation);
+        let occlusion = StructureOcclusion::from_scene(scene);
         commands.entity(instance_entity).with_children(|parent| {
-            parent.spawn((
+            let mut scene_entity = parent.spawn((
                 LevelScene,
                 RankedVisual { rank },
                 VisualFade { alpha: 0.0 },
@@ -333,6 +336,9 @@ fn load_prefab(
                 )
                 .with_scale(Vec3::splat(scene.scale)),
             ));
+            if let Some(occlusion) = occlusion {
+                scene_entity.insert(occlusion);
+            }
         });
     }
 
@@ -469,6 +475,8 @@ mod tests {
         let mut app = App::new();
         app.register_type::<LevelIsometric>()
             .register_type::<SceneDeclared>()
+            .register_type::<SceneOcclusionDeclared>()
+            .register_type::<OcclusionRole>()
             .register_type::<ColliderDeclared>()
             .register_type::<FloorDeclared>()
             .register_type::<AccessDeclared>()
@@ -486,7 +494,9 @@ mod tests {
             .expect("prologue_restaurant_0 should be registered");
 
         assert!(prefab.level.scenes.is_empty());
-        assert!(prefab.level.colliders.is_empty());
+        assert!(!prefab.level.colliders.is_empty());
+        assert_eq!(prefab.level.floors.len(), 2);
+        assert_eq!(prefab.level.accesses.len(), 1);
         assert!(prefab
             .level
             .scenes
@@ -506,6 +516,8 @@ mod load_tests {
         app.add_plugins((MinimalPlugins, AssetPlugin::default(), TransformPlugin))
             .register_type::<LevelIsometric>()
             .register_type::<SceneDeclared>()
+            .register_type::<SceneOcclusionDeclared>()
+            .register_type::<OcclusionRole>()
             .register_type::<ColliderDeclared>()
             .register_type::<FloorDeclared>()
             .register_type::<AccessDeclared>()
@@ -556,6 +568,38 @@ mod load_tests {
             .query_filtered::<Entity, With<crate::npc::Npc>>()
             .iter(app.world())
             .count()
+    }
+
+    #[test]
+    fn alley_stair_reaches_the_roof() {
+        let mut app = setup();
+        app.update();
+        let level = app
+            .world()
+            .resource::<LevelPrefabCatalog>()
+            .prefabs
+            .get("prologue_restaurant_0")
+            .expect("prologue_restaurant_0 should be registered")
+            .level
+            .clone();
+        let vertical = LevelVertical::from_level(&level);
+        let grid = crate::levels::IsoGrid::default();
+
+        let entrance = vertical
+            .sample(&grid, Vec2::ZERO, 0.0)
+            .expect("alley entrance should be walkable");
+        assert_eq!(entrance.elevation, 0.0);
+
+        let stair_mid = vertical
+            .sample(&grid, Vec2::new(272.0, 136.0), 0.4)
+            .expect("stairs should be walkable");
+        assert!((stair_mid.elevation - 0.5).abs() < 0.01);
+
+        let roof = vertical
+            .sample(&grid, grid.cell_to_world(Vec2::new(12.0, 0.0)), 1.0)
+            .expect("roof should be walkable");
+        assert_eq!(roof.elevation, 1.0);
+        assert_eq!(roof.rank, 1);
     }
 
     #[test]
@@ -667,6 +711,7 @@ mod load_tests {
             vertices: Vec::new(),
             z_min: 0.0,
             height: crate::levels::default_collider_height(),
+            role: crate::levels::OcclusionRole::Facade,
         };
 
         let mut saved_level = source.clone();
@@ -730,6 +775,7 @@ mod load_tests {
                     vertices: Vec::new(),
                     z_min: 0.0,
                     height: crate::levels::default_collider_height(),
+                    role: crate::levels::OcclusionRole::Facade,
                 });
         }
 
@@ -765,7 +811,7 @@ mod load_tests {
             },
         );
         assert_eq!(instance_count(&mut app), 1);
-        assert_eq!(collider_count(&mut app), 0);
+        assert!(collider_count(&mut app) > 0);
         assert!(app.world().resource::<PlayerSpawnRequest>().0.is_some());
 
         app.update();

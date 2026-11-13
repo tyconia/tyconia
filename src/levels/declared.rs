@@ -1,5 +1,48 @@
 use bevy::prelude::*;
 
+/// How a structure volume participates in the cutaway rules.
+#[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[type_path = "tyconia::levels"]
+pub enum OcclusionRole {
+    /// A facade or wall that should be ghosted only when it hides the player.
+    #[default]
+    Facade,
+    /// A roof slab. Hidden when the player is standing inside the footprint.
+    Roof,
+    /// An interior ceiling or overhang. Behaves like a roof for cutaways.
+    Ceiling,
+    /// Interior detail that should stay readable when its enclosing roof opens.
+    Interior,
+    /// Small props: they keep the existing rank-based visibility.
+    Prop,
+}
+
+impl OcclusionRole {
+    pub fn is_roof_like(self) -> bool {
+        matches!(self, Self::Roof | Self::Ceiling)
+    }
+}
+
+#[derive(Reflect, Debug, Clone)]
+#[type_path = "tyconia::levels"]
+pub struct SceneOcclusionDeclared {
+    pub z_min: f32,
+    #[reflect(default = "default_collider_height")]
+    pub height: f32,
+    /// Local polygon points relative to `SceneDeclared::position`. When empty,
+    /// a diamond from `half_extents` is used.
+    #[reflect(default)]
+    pub footprint: Vec<Vec2>,
+    #[reflect(default = "default_occlusion_half_extents")]
+    pub half_extents: Vec2,
+    #[reflect(default)]
+    pub role: OcclusionRole,
+}
+
+pub fn default_occlusion_half_extents() -> Vec2 {
+    Vec2::splat(32.0)
+}
+
 #[derive(Reflect, Debug, Clone)]
 #[type_path = "tyconia::levels"]
 pub struct SceneDeclared {
@@ -9,6 +52,10 @@ pub struct SceneDeclared {
     pub z: f32,
     #[reflect(default)]
     pub elevation: f32,
+    /// Optional structure volume. Scenes without one keep the legacy
+    /// rank-based visibility.
+    #[reflect(default)]
+    pub occlusion: Option<SceneOcclusionDeclared>,
 }
 
 #[derive(Reflect, Debug, Clone)]
@@ -26,6 +73,8 @@ pub struct ColliderDeclared {
     pub z_min: f32,
     #[reflect(default = "default_collider_height")]
     pub height: f32,
+    #[reflect(default)]
+    pub role: OcclusionRole,
 }
 
 pub fn default_collider_height() -> f32 {

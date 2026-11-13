@@ -1,4 +1,4 @@
-use crate::levels::ColliderDeclared;
+use crate::levels::{ColliderDeclared, OcclusionRole};
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -8,6 +8,7 @@ pub struct ObstacleCollider {
     pub screen_space: bool,
     pub z_min: f32,
     pub height: f32,
+    pub role: OcclusionRole,
 }
 
 #[derive(Component, Debug, Clone, Copy, Default)]
@@ -40,6 +41,7 @@ impl ObstacleCollider {
             screen_space: false,
             z_min: 0.0,
             height: crate::levels::default_collider_height(),
+            role: OcclusionRole::Facade,
         }
     }
 
@@ -49,6 +51,7 @@ impl ObstacleCollider {
             screen_space: true,
             z_min: 0.0,
             height: crate::levels::default_collider_height(),
+            role: OcclusionRole::Facade,
         }
     }
 
@@ -66,6 +69,7 @@ impl ObstacleCollider {
             screen_space: collider.screen_space,
             z_min: collider.z_min,
             height: collider.height,
+            role: collider.role,
         }
     }
 
