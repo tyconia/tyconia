@@ -7,12 +7,13 @@
     legend: [],
     surface: [],
     scenes: [
-      // A countertop sprite hanging above the ground-floor room. Its occlusion
-      // volume is roof-like, so it disappears while the player walks under it.
+      // A countertop sprite hanging above the front of the ground-floor room.
+      // Its occlusion volume is roof-like, so it disappears while the player
+      // walks under it.
       (
         asset: "textures/isometric_countertop.png",
-        position: (416.0, 112.0),
-        scale: 2.0,
+        position: (352.0, 80.0),
+        scale: 1.4,
         z: 0.0,
         elevation: 2.0,
         occlusion: Some((
@@ -67,8 +68,9 @@
         height: 2.6,
         role: Facade,
       ),
-      // Ground floor of the restaurant. The gap at (6, 0)..(6, 1) is the
-      // doorway.
+      // Ground-floor restaurant walls. They reach the underside of the second
+      // floor so each upper storey reads as supported. The gap between the two
+      // west segments is the doorway at (6, 0)..(6, 1).
       (
         position: (128.0, 128.0),
         half_extents: (17.888544, 53.665632),
@@ -76,7 +78,7 @@
         screen_space: false,
         vertices: [],
         z_min: 0.0,
-        height: 1.0,
+        height: 2.0,
         role: Facade,
       ),
       (
@@ -86,7 +88,7 @@
         screen_space: false,
         vertices: [],
         z_min: 0.0,
-        height: 1.0,
+        height: 2.0,
         role: Facade,
       ),
       (
@@ -96,7 +98,7 @@
         screen_space: false,
         vertices: [],
         z_min: 0.0,
-        height: 1.0,
+        height: 2.0,
         role: Facade,
       ),
       (
@@ -106,7 +108,7 @@
         screen_space: false,
         vertices: [],
         z_min: 0.0,
-        height: 1.0,
+        height: 2.0,
         role: Facade,
       ),
       (
@@ -116,13 +118,13 @@
         screen_space: false,
         vertices: [],
         z_min: 0.0,
-        height: 1.0,
+        height: 2.0,
         role: Facade,
       ),
       // A slab bridging the alley. Walking beneath it removes the roof.
       (
-        position: (96.0, 48.0),
-        half_extents: (35.777088, 35.777088),
+        position: (112.0, 40.0),
+        half_extents: (35.777088, 17.888544),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -132,8 +134,8 @@
       ),
       // Overhang above the south half of the ground-floor room.
       (
-        position: (384.0, 96.0),
-        half_extents: (71.554176, 71.554176),
+        position: (464.0, 136.0),
+        half_extents: (26.832816, 17.888544),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -141,10 +143,32 @@
         height: 0.3,
         role: Ceiling,
       ),
-      // Railings around the exposed edges of each elevated floor.
+      // Second-floor walls and rails. The back and east edges keep solid walls
+      // up to the next slab; the open west and front edges get low railings.
+      // Front rail gaps at x9 and x12 leave room for the stair and ramp mouths.
       (
-        position: (320.0, 128.0),
-        half_extents: (71.554176, 17.888544),
+        position: (192.0, 208.0),
+        half_extents: (143.108352, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 2.0,
+        role: Facade,
+      ),
+      (
+        position: (384.0, 240.0),
+        half_extents: (8.944272, 71.554176),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 2.0,
+        role: Facade,
+      ),
+      (
+        position: (464.0, 200.0),
+        half_extents: (8.944272, 17.888544),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -153,8 +177,70 @@
         role: Facade,
       ),
       (
-        position: (352.0, 176.0),
-        half_extents: (53.665632, 17.888544),
+        position: (144.0, 104.0),
+        half_extents: (8.944272, 89.44272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (272.0, 88.0),
+        half_extents: (53.665632, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (384.0, 144.0),
+        half_extents: (35.777088, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (464.0, 184.0),
+        half_extents: (17.888544, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      // Fourth-floor walls and rails. Front gaps at x9 and x11 carry the two
+      // accesses through the slab.
+      (
+        position: (224.0, 224.0),
+        half_extents: (107.331264, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 2.0,
+        role: Facade,
+      ),
+      (
+        position: (368.0, 248.0),
+        half_extents: (8.944272, 53.665632),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 2.0,
+        role: Facade,
+      ),
+      (
+        position: (432.0, 216.0),
+        half_extents: (8.944272, 17.888544),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -163,8 +249,50 @@
         role: Facade,
       ),
       (
-        position: (320.0, 192.0),
-        half_extents: (35.777088, 17.888544),
+        position: (192.0, 144.0),
+        half_extents: (8.944272, 71.554176),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (272.0, 120.0),
+        half_extents: (17.888544, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (336.0, 152.0),
+        half_extents: (17.888544, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (416.0, 192.0),
+        half_extents: (35.777088, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      // Sixth-floor lookout. All four edges are low rails, with a gap on the
+      // front edge where the last ramp arrives.
+      (
+        position: (256.0, 240.0),
+        half_extents: (71.554176, 8.944272),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -172,20 +300,60 @@
         height: 0.8,
         role: Facade,
       ),
-      // A readable counter on the second floor.
       (
-        position: (384.0, 160.0),
+        position: (368.0, 248.0),
+        half_extents: (8.944272, 53.665632),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 6.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (240.0, 184.0),
+        half_extents: (8.944272, 53.665632),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 6.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (304.0, 168.0),
+        half_extents: (17.888544, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 6.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (384.0, 208.0),
+        half_extents: (35.777088, 8.944272),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 6.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      // A readable counter in the ground-floor room.
+      (
+        position: (368.0, 120.0),
         half_extents: (35.777088, 17.888544),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
-        z_min: 2.0,
+        z_min: 0.0,
         height: 0.6,
         role: Interior,
       ),
-      // Crates on every floor. Props keep rank-based visibility.
+      // Crates on the ground and upper floors. Props keep rank-based visibility.
       (
-        position: (128.0, 64.0),
+        position: (320.0, 80.0),
         half_extents: (17.888544, 17.888544),
         rotation_degrees: 0.0,
         screen_space: false,
@@ -195,18 +363,8 @@
         role: Prop,
       ),
       (
-        position: (224.0, 112.0),
-        half_extents: (17.888544, 17.888544),
-        rotation_degrees: 0.0,
-        screen_space: false,
-        vertices: [],
-        z_min: 2.0,
-        height: 0.6,
-        role: Prop,
-      ),
-      (
-        position: (256.0, 160.0),
-        half_extents: (17.888544, 17.888544),
+        position: (380.8, 193.6),
+        half_extents: (8.944272, 8.944272),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -215,8 +373,8 @@
         role: Prop,
       ),
       (
-        position: (352.0, 240.0),
-        half_extents: (17.888544, 17.888544),
+        position: (352.0, 224.0),
+        half_extents: (12.521981, 12.521981),
         rotation_degrees: 0.0,
         screen_space: false,
         vertices: [],
@@ -243,43 +401,39 @@
           (13, -3), (13, -2), (13, -1), (13, 0), (13, 1), (13, 2), (13, 3), (13, 4),
         ],
       ),
-      // Second floor.
+      // Second floor. The cut-out column at x12 is the ramp shaft.
       (
         elevation: 2.0,
         rank: 2,
         cells: [
-          (6, -3), (6, -2), (6, -1), (6, 0), (6, 1),
-          (7, -3), (7, -2), (7, -1), (7, 0), (7, 1),
-          (8, -3), (8, -2), (8, -1), (8, 0), (8, 1),
-          (9, -3), (9, -2), (9, -1), (9, 0), (9, 1),
-          (10, -3), (10, -2), (10, -1), (10, 0), (10, 1),
-          (11, -3), (11, -2), (11, -1), (11, 0), (11, 1),
-          (12, -3), (12, -2), (12, -1), (12, 0), (12, 1),
-          (13, -3), (13, -2), (13, -1), (13, 0), (13, 1),
+          (6, -3), (7, -3), (8, -3), (9, -3), (10, -3), (11, -3), (12, -3), (13, -3),
+          (6, -2), (7, -2), (8, -2), (9, -2), (10, -2), (11, -2), (12, -2), (13, -2),
+          (6, -1), (7, -1), (8, -1), (9, -1), (10, -1), (11, -1), (13, -1),
+          (6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0), (13, 0),
+          (6, 1), (7, 1), (8, 1), (9, 1), (10, 1), (11, 1), (13, 1),
         ],
       ),
-      // Fourth floor, inset toward the back of the lot.
+      // Fourth floor, inset toward the back of the lot. The cut-out column at
+      // x9 is the stairwell.
       (
         elevation: 4.0,
         rank: 4,
         cells: [
-          (8, -3), (8, -2), (8, -1), (8, 0),
-          (9, -3), (9, -2), (9, -1), (9, 0),
-          (10, -3), (10, -2), (10, -1), (10, 0),
-          (11, -3), (11, -2), (11, -1), (11, 0),
-          (12, -3), (12, -2), (12, -1), (12, 0),
-          (13, -3), (13, -2), (13, -1), (13, 0),
+          (8, -3), (9, -3), (10, -3), (11, -3), (12, -3), (13, -3),
+          (8, -2), (10, -2), (11, -2), (12, -2), (13, -2),
+          (8, -1), (10, -1), (11, -1), (12, -1), (13, -1),
+          (8, 0), (10, 0), (11, 0), (12, 0), (13, 0),
         ],
       ),
-      // Sixth floor, a small lookout at the top.
+      // Sixth floor, a small lookout at the top. The cut-out column at x11 is
+      // the final ramp shaft.
       (
         elevation: 6.0,
         rank: 6,
         cells: [
-          (10, -3), (10, -2), (10, -1),
-          (11, -3), (11, -2), (11, -1),
-          (12, -3), (12, -2), (12, -1),
-          (13, -3), (13, -2), (13, -1),
+          (10, -3), (11, -3), (12, -3), (13, -3),
+          (10, -2), (12, -2), (13, -2),
+          (10, -1), (12, -1), (13, -1),
         ],
       ),
     ],
@@ -321,21 +475,21 @@
         kind: Civilian,
       ),
       (
-        position: (256.0, 192.0),
+        position: (224.0, 112.0),
         elevation: 2.0,
-        patrol: [(224.0, 176.0), (288.0, 208.0)],
+        patrol: [(160.0, 144.0)],
         kind: Guard,
       ),
       (
-        position: (288.0, 176.0),
+        position: (230.4, 147.2),
         elevation: 4.0,
-        patrol: [(320.0, 192.0), (256.0, 160.0)],
+        patrol: [(182.4, 171.2)],
         kind: Civilian,
       ),
       (
-        position: (320.0, 224.0),
+        position: (304.0, 232.0),
         elevation: 6.0,
-        patrol: [(352.0, 240.0), (288.0, 208.0)],
+        patrol: [(326.4, 243.2)],
         kind: Guard,
       ),
     ],
