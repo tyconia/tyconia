@@ -6,7 +6,24 @@
     },
     legend: [],
     surface: [],
-    scenes: [],
+    scenes: [
+      // A countertop sprite hanging above the ground-floor room. Its occlusion
+      // volume is roof-like, so it disappears while the player walks under it.
+      (
+        asset: "textures/isometric_countertop.png",
+        position: (416.0, 112.0),
+        scale: 2.0,
+        z: 0.0,
+        elevation: 2.0,
+        occlusion: Some((
+          z_min: 2.0,
+          height: 0.25,
+          footprint: [],
+          half_extents: (32.0, 32.0),
+          role: Roof,
+        )),
+      ),
+    ],
     colliders: [
       // Bottom side of the alley: one 4x4 building then one 2x2 building.
       (
@@ -50,8 +67,8 @@
         height: 2.6,
         role: Facade,
       ),
-      // Final 8x8 room. The walls are one storey tall so the roof can be
-      // walked on. The gap at (6, 0)..(6, 1) is the doorway.
+      // Ground floor of the restaurant. The gap at (6, 0)..(6, 1) is the
+      // doorway.
       (
         position: (128.0, 128.0),
         half_extents: (17.888544, 53.665632),
@@ -102,9 +119,114 @@
         height: 1.0,
         role: Facade,
       ),
+      // A slab bridging the alley. Walking beneath it removes the roof.
+      (
+        position: (96.0, 48.0),
+        half_extents: (35.777088, 35.777088),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.4,
+        role: Roof,
+      ),
+      // Overhang above the south half of the ground-floor room.
+      (
+        position: (384.0, 96.0),
+        half_extents: (71.554176, 71.554176),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.3,
+        role: Ceiling,
+      ),
+      // Railings around the exposed edges of each elevated floor.
+      (
+        position: (320.0, 128.0),
+        half_extents: (71.554176, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (352.0, 176.0),
+        half_extents: (53.665632, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      (
+        position: (320.0, 192.0),
+        half_extents: (35.777088, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 6.0,
+        height: 0.8,
+        role: Facade,
+      ),
+      // A readable counter on the second floor.
+      (
+        position: (384.0, 160.0),
+        half_extents: (35.777088, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.6,
+        role: Interior,
+      ),
+      // Crates on every floor. Props keep rank-based visibility.
+      (
+        position: (128.0, 64.0),
+        half_extents: (17.888544, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 0.0,
+        height: 0.6,
+        role: Prop,
+      ),
+      (
+        position: (224.0, 112.0),
+        half_extents: (17.888544, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 2.0,
+        height: 0.6,
+        role: Prop,
+      ),
+      (
+        position: (256.0, 160.0),
+        half_extents: (17.888544, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 4.0,
+        height: 0.6,
+        role: Prop,
+      ),
+      (
+        position: (352.0, 240.0),
+        half_extents: (17.888544, 17.888544),
+        rotation_degrees: 0.0,
+        screen_space: false,
+        vertices: [],
+        z_min: 6.0,
+        height: 0.6,
+        role: Prop,
+      ),
     ],
     floors: [
-      // 2-wide alley plus the ground floor of the final room.
+      // Ground floor: the alley plus the full restaurant footprint.
       (
         elevation: 0.0,
         rank: 0,
@@ -121,30 +243,100 @@
           (13, -3), (13, -2), (13, -1), (13, 0), (13, 1), (13, 2), (13, 3), (13, 4),
         ],
       ),
-      // Walkable roof of the final room.
+      // Second floor.
       (
-        elevation: 1.0,
-        rank: 1,
+        elevation: 2.0,
+        rank: 2,
         cells: [
-          (6, -3), (6, -2), (6, -1), (6, 0), (6, 1), (6, 2), (6, 3), (6, 4),
-          (7, -3), (7, -2), (7, -1), (7, 0), (7, 1), (7, 2), (7, 3), (7, 4),
-          (8, -3), (8, -2), (8, -1), (8, 0), (8, 1), (8, 2), (8, 3), (8, 4),
-          (9, -3), (9, -2), (9, -1), (9, 0), (9, 1), (9, 2), (9, 3), (9, 4),
-          (10, -3), (10, -2), (10, -1), (10, 0), (10, 1), (10, 2), (10, 3), (10, 4),
-          (11, -3), (11, -2), (11, -1), (11, 0), (11, 1), (11, 2), (11, 3), (11, 4),
-          (12, -3), (12, -2), (12, -1), (12, 0), (12, 1), (12, 2), (12, 3), (12, 4),
-          (13, -3), (13, -2), (13, -1), (13, 0), (13, 1), (13, 2), (13, 3), (13, 4),
+          (6, -3), (6, -2), (6, -1), (6, 0), (6, 1),
+          (7, -3), (7, -2), (7, -1), (7, 0), (7, 1),
+          (8, -3), (8, -2), (8, -1), (8, 0), (8, 1),
+          (9, -3), (9, -2), (9, -1), (9, 0), (9, 1),
+          (10, -3), (10, -2), (10, -1), (10, 0), (10, 1),
+          (11, -3), (11, -2), (11, -1), (11, 0), (11, 1),
+          (12, -3), (12, -2), (12, -1), (12, 0), (12, 1),
+          (13, -3), (13, -2), (13, -1), (13, 0), (13, 1),
+        ],
+      ),
+      // Fourth floor, inset toward the back of the lot.
+      (
+        elevation: 4.0,
+        rank: 4,
+        cells: [
+          (8, -3), (8, -2), (8, -1), (8, 0),
+          (9, -3), (9, -2), (9, -1), (9, 0),
+          (10, -3), (10, -2), (10, -1), (10, 0),
+          (11, -3), (11, -2), (11, -1), (11, 0),
+          (12, -3), (12, -2), (12, -1), (12, 0),
+          (13, -3), (13, -2), (13, -1), (13, 0),
+        ],
+      ),
+      // Sixth floor, a small lookout at the top.
+      (
+        elevation: 6.0,
+        rank: 6,
+        cells: [
+          (10, -3), (10, -2), (10, -1),
+          (11, -3), (11, -2), (11, -1),
+          (12, -3), (12, -2), (12, -1),
+          (13, -3), (13, -2), (13, -1),
         ],
       ),
     ],
     accesses: [
+      // Long ramp from the alley up to the second floor.
       (
-        from: (224.0, 112.0),
-        to: (320.0, 160.0),
+        from: (480.0, 144.0),
+        to: (352.0, 208.0),
         width: 28.0,
         from_elevation: 0.0,
-        to_elevation: 1.0,
+        to_elevation: 2.0,
+        kind: Ramp,
+      ),
+      // Stairs between the second and fourth floors.
+      (
+        from: (320.0, 128.0),
+        to: (224.0, 176.0),
+        width: 28.0,
+        from_elevation: 2.0,
+        to_elevation: 4.0,
         kind: Stairs,
+      ),
+      // Final ramp up to the lookout.
+      (
+        from: (352.0, 176.0),
+        to: (288.0, 208.0),
+        width: 28.0,
+        from_elevation: 4.0,
+        to_elevation: 6.0,
+        kind: Ramp,
+      ),
+    ],
+    npcs: [
+      // One NPC per floor, alternating kinds so both bodies are exercised.
+      (
+        position: (64.0, 32.0),
+        elevation: 0.0,
+        patrol: [(160.0, 80.0)],
+        kind: Civilian,
+      ),
+      (
+        position: (256.0, 192.0),
+        elevation: 2.0,
+        patrol: [(224.0, 176.0), (288.0, 208.0)],
+        kind: Guard,
+      ),
+      (
+        position: (288.0, 176.0),
+        elevation: 4.0,
+        patrol: [(320.0, 192.0), (256.0, 160.0)],
+        kind: Civilian,
+      ),
+      (
+        position: (320.0, 224.0),
+        elevation: 6.0,
+        patrol: [(352.0, 240.0), (288.0, 208.0)],
+        kind: Guard,
       ),
     ],
     spawn: (0.0, 0.0),

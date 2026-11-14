@@ -133,60 +133,38 @@ impl SurfaceFootprint {
     }
 }
 
-/// Screen-space footprint of a structure volume. Cells are resolved through the
-/// iso grid, polygons are already in world/screen space.
+/// World-space footprint of a structure volume. The polygon is already resolved
+/// to world/screen space by `StructureOcclusion::from_scene`/`from_collider`.
 #[derive(Clone, Debug)]
-pub enum OcclusionFootprint {
-    Cells(HashSet<IVec2>),
-    Polygon(Vec<Vec2>),
+pub struct OcclusionFootprint {
+    pub points: Vec<Vec2>,
 }
 
 impl OcclusionFootprint {
-    pub fn contains_ground(&self, grid: &IsoGrid, point: Vec2) -> bool {
-        match self {
-            Self::Cells(cells) => cells.contains(&grid.snap_cell(point)),
-            Self::Polygon(points) => point_in_polygon(point, points),
-        }
+    pub fn new(points: Vec<Vec2>) -> Self {
+        Self { points }
     }
 
-    fn ground_bounds(&self, grid: &IsoGrid) -> Option<Rect> {
-        match self {
-            Self::Cells(cells) => {
-                let mut min = Vec2::splat(f32::INFINITY);
-                let mut max = Vec2::splat(f32::NEG_INFINITY);
-                for cell in cells {
-                    let center = grid.cell_to_world(cell.as_vec2());
-                    min = min.min(center);
-                    max = max.max(center);
-                }
-                if !min.is_finite() || !max.is_finite() {
-                    return None;
-                }
+    pub fn contains_ground(&self, point: Vec2) -> bool {
+        point_in_polygon(point, &self.points)
+    }
 
-                let pad = Vec2::new(
-                    grid.step_u().x.abs().max(grid.step_v().x.abs()),
-                    grid.step_u().y.abs().max(grid.step_v().y.abs()),
-                ) * 0.5;
-                Some(Rect::from_corners(min - pad, max + pad))
-            }
-            Self::Polygon(points) => {
-                if points.is_empty() {
-                    return None;
-                }
-                let mut min = Vec2::splat(f32::INFINITY);
-                let mut max = Vec2::splat(f32::NEG_INFINITY);
-                for point in points {
-                    min = min.min(*point);
-                    max = max.max(*point);
-                }
-                Some(Rect::from_corners(min, max))
-            }
+    fn ground_bounds(&self) -> Option<Rect> {
+        if self.points.is_empty() {
+            return None;
         }
+        let mut min = Vec2::splat(f32::INFINITY);
+        let mut max = Vec2::splat(f32::NEG_INFINITY);
+        for point in &self.points {
+            min = min.min(*point);
+            max = max.max(*point);
+        }
+        Some(Rect::from_corners(min, max))
     }
 
     /// Following `level_z`, smaller ground Y values are closer to the camera.
-    fn front_y(&self, grid: &IsoGrid) -> f32 {
-        self.ground_bounds(grid)
+    fn front_y(&self) -> f32 {
+        self.ground_bounds()
             .map(|bounds| bounds.min.y)
             .unwrap_or(f32::INFINITY)
     }
@@ -218,7 +196,7 @@ impl StructureOcclusion {
         };
 
         Some(Self {
-            footprint: OcclusionFootprint::Polygon(points),
+            footprint: OcclusionFootprint::new(points),
             z_min: occlusion.z_min,
             z_max: occlusion.z_min + occlusion.height.max(0.01),
             role: occlusion.role,
@@ -227,26 +205,11 @@ impl StructureOcclusion {
 
     pub fn from_collider(collider: &ObstacleCollider, ground: &GroundTransform) -> Self {
         Self {
-            footprint: OcclusionFootprint::Polygon(ground.world_corners(collider)),
+            footprint: OcclusionFootprint::new(ground.world_corners(collider)),
             z_min: collider.z_min,
             z_max: collider.z_max(),
             role: collider.role,
         }
-    }
-
-    fn screen_bounds(&self, grid: &IsoGrid) -> Option<Rect> {
-        let ground = self.footprint.ground_bounds(grid)?;
-        let low_elevation = self.z_min.min(self.z_max);
-        let high_elevation = self.z_min.max(self.z_max);
-        let min = Vec2::new(
-            ground.min.x,
-            ground.min.y + elevation_screen_offset(low_elevation),
-        );
-        let max = Vec2::new(
-            ground.max.x,
-            ground.max.y + elevation_screen_offset(high_elevation),
-        );
-        Some(Rect::from_corners(min, max))
     }
 }
 
@@ -379,26 +342,146 @@ fn player_structure_pose(player: Option<(&Transform, &PlayerHeight)>) -> Option<
     })
 }
 
-fn player_body_rect(player: StructurePlayer) -> Rect {
-    let size = Vec2::new(
-        OCCLUSION_PLAYER_HALF_WIDTH * 2.0 + OCCLUSION_MARGIN * 2.0,
-        OCCLUSION_BODY_HEIGHT + OCCLUSION_MARGIN * 2.0,
-    );
-    Rect::from_center_size(player.screen, size)
-}
-
-fn rect_coverage(bounds: Rect, body: Rect) -> f32 {
-    let overlap = bounds.intersect(body);
-    if overlap.width() <= 0.0 || overlap.height() <= 0.0 {
-        return 0.0;
+/// Convex hull (counter-clockwise) of a point set via Andrew's monotone chain.
+/// Returns the input unchanged when it has fewer than three distinct points.
+fn convex_hull(points: &[Vec2]) -> Vec<Vec2> {
+    let mut points = points.to_vec();
+    points.sort_by(|a, b| {
+        a.x.partial_cmp(&b.x)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal))
+    });
+    points.dedup_by(|a, b| (*a - *b).length_squared() <= 1e-6);
+    if points.len() < 3 {
+        return points;
     }
 
-    let body_area = body.width() * body.height();
+    let cross = |o: Vec2, a: Vec2, b: Vec2| (a - o).perp_dot(b - o);
+    let mut hull: Vec<Vec2> = Vec::with_capacity(points.len() + 1);
+    for &point in &points {
+        while hull.len() >= 2 && cross(hull[hull.len() - 2], hull[hull.len() - 1], point) <= 0.0 {
+            hull.pop();
+        }
+        hull.push(point);
+    }
+    let lower = hull.len() + 1;
+    for &point in points.iter().rev() {
+        while hull.len() >= lower && cross(hull[hull.len() - 2], hull[hull.len() - 1], point) <= 0.0
+        {
+            hull.pop();
+        }
+        hull.push(point);
+    }
+    hull.pop();
+    hull
+}
+
+fn edge_intersection(a: Vec2, b: Vec2, c: Vec2, d: Vec2) -> Vec2 {
+    let r = b - a;
+    let s = d - c;
+    let denominator = r.perp_dot(s);
+    if denominator.abs() <= f32::EPSILON {
+        return b;
+    }
+    a + r * ((c - a).perp_dot(s) / denominator)
+}
+
+/// Sutherland-Hodgman clip of `subject` against a convex, counter-clockwise
+/// `clip` polygon. Returns the (possibly empty) intersection polygon.
+fn clip_polygon(subject: &[Vec2], clip: &[Vec2]) -> Vec<Vec2> {
+    if subject.len() < 3 || clip.len() < 3 {
+        return Vec::new();
+    }
+
+    let side = |a: Vec2, b: Vec2, point: Vec2| (b - a).perp_dot(point - a);
+    let mut output = subject.to_vec();
+
+    for index in 0..clip.len() {
+        if output.is_empty() {
+            break;
+        }
+        let a = clip[index];
+        let b = clip[(index + 1) % clip.len()];
+        let input = std::mem::take(&mut output);
+        let mut previous = *input.last().unwrap();
+        let mut previous_inside = side(a, b, previous) >= 0.0;
+
+        for &current in &input {
+            let current_inside = side(a, b, current) >= 0.0;
+            if current_inside {
+                if !previous_inside {
+                    output.push(edge_intersection(previous, current, a, b));
+                }
+                output.push(current);
+            } else if previous_inside {
+                output.push(edge_intersection(previous, current, a, b));
+            }
+            previous = current;
+            previous_inside = current_inside;
+        }
+    }
+
+    output
+}
+
+/// The player's body as a screen-space polygon: an iso diamond footprint swept
+/// over the body height. More accurate than an axis-aligned rectangle.
+fn player_body_polygon(player: StructurePlayer) -> Vec<Vec2> {
+    let half = Vec2::new(
+        OCCLUSION_PLAYER_HALF_WIDTH + OCCLUSION_MARGIN,
+        (OCCLUSION_PLAYER_HALF_WIDTH + OCCLUSION_MARGIN) * 0.5,
+    );
+    let half_height = (OCCLUSION_BODY_HEIGHT + OCCLUSION_MARGIN * 2.0) * 0.5;
+    let bottom = iso_corners(half).map(|point| point + player.screen - Vec2::Y * half_height);
+    let top = iso_corners(half).map(|point| point + player.screen + Vec2::Y * half_height);
+    let mut points = bottom.to_vec();
+    points.extend_from_slice(&top);
+    convex_hull(&points)
+}
+
+/// The screen silhouette of a structure volume: its footprint swept between
+/// `z_min` and `z_max`.
+fn structure_silhouette(structure: &StructureOcclusion) -> Vec<Vec2> {
+    let low = structure.z_min.min(structure.z_max);
+    let high = structure.z_min.max(structure.z_max);
+    let mut points = Vec::with_capacity(structure.footprint.points.len() * 2);
+    points.extend(
+        structure
+            .footprint
+            .points
+            .iter()
+            .map(|point| *point + Vec2::Y * elevation_screen_offset(low)),
+    );
+    points.extend(
+        structure
+            .footprint
+            .points
+            .iter()
+            .map(|point| *point + Vec2::Y * elevation_screen_offset(high)),
+    );
+    convex_hull(&points)
+}
+
+/// Fraction of the player body hidden by the structure, using true polygon
+/// overlap instead of an axis-aligned bounding-box approximation.
+fn polygon_coverage(structure: &StructureOcclusion, player: StructurePlayer) -> f32 {
+    let body = player_body_polygon(player);
+    let body_area = polygon_signed_area(&body).abs();
     if body_area <= f32::EPSILON {
         return 0.0;
     }
 
-    ((overlap.width() * overlap.height()) / body_area).clamp(0.0, 1.0)
+    let silhouette = structure_silhouette(structure);
+    if silhouette.len() < 3 {
+        return 0.0;
+    }
+
+    let clipped = clip_polygon(&body, &silhouette);
+    if clipped.len() < 3 {
+        return 0.0;
+    }
+
+    (polygon_signed_area(&clipped).abs() / body_area).clamp(0.0, 1.0)
 }
 
 fn editor_structure_alpha(structure: &StructureOcclusion, focus: VisualFocus) -> f32 {
@@ -433,7 +516,6 @@ fn editor_structure_alpha(structure: &StructureOcclusion, focus: VisualFocus) ->
 fn structure_target_alpha(
     structure: &StructureOcclusion,
     focus: Option<VisualFocus>,
-    grid: &IsoGrid,
     player: Option<StructurePlayer>,
 ) -> f32 {
     let Some(focus) = focus else {
@@ -449,17 +531,12 @@ fn structure_target_alpha(
 
     let feet = player.elevation;
     let head = feet + PLAYER_BODY_HEIGHT;
-    let body = player_body_rect(player);
-    let Some(bounds) = structure.screen_bounds(grid) else {
-        return 1.0;
-    };
-    let overlap = rect_coverage(bounds, body);
-    let covers_ground = structure.footprint.contains_ground(grid, player.ground);
+    let covers_ground = structure.footprint.contains_ground(player.ground);
     let is_roof = structure.role.is_roof_like();
     let entirely_above = structure.z_min >= head - GROUND_EPSILON;
     let entirely_below = structure.z_max <= feet + GROUND_EPSILON;
     let intersects_body = structure.z_min < head && structure.z_max > feet;
-    let in_front = structure.footprint.front_y(grid) < player.ground.y - STRUCTURE_DEPTH_EPSILON;
+    let in_front = structure.footprint.front_y() < player.ground.y - STRUCTURE_DEPTH_EPSILON;
 
     if is_roof && covers_ground && entirely_above {
         return 0.0;
@@ -473,12 +550,13 @@ fn structure_target_alpha(
         if covers_ground {
             return XRAY_ALPHA;
         }
-        if is_roof && in_front && overlap > 0.0 {
+        if is_roof && in_front && polygon_coverage(structure, player) > 0.0 {
             return XRAY_ALPHA;
         }
         return 1.0;
     }
 
+    let overlap = polygon_coverage(structure, player);
     if intersects_body && in_front && overlap > 0.0 {
         return (1.0 - overlap * (1.0 - XRAY_ALPHA)).clamp(XRAY_ALPHA, 1.0);
     }
@@ -573,7 +651,7 @@ fn sync_collider_meshes(
         let alpha = if collider.role == OcclusionRole::Prop {
             ranked_target_alpha(rank, focus)
         } else {
-            structure_target_alpha(&structure, focus, &grid, structure_player)
+            structure_target_alpha(&structure, focus, structure_player)
         };
         let material = checker_material(&mut color_materials, &materials.checker_texture, alpha);
         commands.entity(entity).insert((
@@ -766,7 +844,7 @@ fn update_ranked_visuals(
             if structure.role == OcclusionRole::Prop {
                 ranked_target_alpha(ranked.rank, focus)
             } else {
-                structure_target_alpha(structure, focus, &grid, structure_player)
+                structure_target_alpha(structure, focus, structure_player)
             }
         } else if let Some(surface) = surface {
             surface_target_alpha(surface, footprint, focus, &grid, player_screen)
@@ -952,7 +1030,7 @@ mod tests {
         role: OcclusionRole,
     ) -> StructureOcclusion {
         StructureOcclusion {
-            footprint: OcclusionFootprint::Polygon(points),
+            footprint: OcclusionFootprint::new(points),
             z_min,
             z_max,
             role,
@@ -985,8 +1063,7 @@ mod tests {
         );
         let player = structure_player(ground, 0.0);
 
-        let alpha =
-            structure_target_alpha(&structure, Some(focus(0.0, false)), &grid, Some(player));
+        let alpha = structure_target_alpha(&structure, Some(focus(0.0, false)), Some(player));
 
         assert!((XRAY_ALPHA..1.0).contains(&alpha), "alpha was {alpha}");
     }
@@ -999,9 +1076,82 @@ mod tests {
         let player = structure_player(ground, 0.0);
 
         assert_eq!(
-            structure_target_alpha(&structure, Some(focus(0.0, false)), &grid, Some(player)),
+            structure_target_alpha(&structure, Some(focus(0.0, false)), Some(player)),
             1.0
         );
+    }
+
+    #[test]
+    fn structure_behind_the_player_stays_solid() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let structure = structure(
+            player_building(ground + Vec2::new(0.0, 40.0)),
+            0.0,
+            1.0,
+            OcclusionRole::Facade,
+        );
+        let player = structure_player(ground, 0.0);
+
+        assert_eq!(
+            structure_target_alpha(&structure, Some(focus(0.0, false)), Some(player)),
+            1.0
+        );
+    }
+
+    #[test]
+    fn structure_with_empty_footprint_stays_solid() {
+        let grid = IsoGrid::default();
+        let ground = grid.cell_to_world(Vec2::ZERO);
+        let structure = structure(Vec::new(), 0.0, 1.0, OcclusionRole::Facade);
+        let player = structure_player(ground, 0.0);
+
+        assert_eq!(
+            structure_target_alpha(&structure, Some(focus(0.0, false)), Some(player)),
+            1.0
+        );
+    }
+
+    #[test]
+    fn convex_hull_drops_interior_points() {
+        let hull = convex_hull(&[
+            Vec2::new(-1.0, -1.0),
+            Vec2::new(1.0, -1.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(-1.0, 1.0),
+            Vec2::ZERO,
+        ]);
+
+        assert_eq!(hull.len(), 4);
+        assert!((polygon_signed_area(&hull).abs() - 4.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn clip_polygon_intersects_overlapping_squares() {
+        let subject = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ];
+        let clip = vec![
+            Vec2::new(1.0, 1.0),
+            Vec2::new(3.0, 1.0),
+            Vec2::new(3.0, 3.0),
+            Vec2::new(1.0, 3.0),
+        ];
+
+        let intersection = clip_polygon(&subject, &clip);
+        assert!((polygon_signed_area(&intersection).abs() - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn player_body_polygon_is_centered_on_the_player() {
+        let player = structure_player(Vec2::new(50.0, 20.0), 0.0);
+        let body = player_body_polygon(player);
+        let center = body.iter().copied().sum::<Vec2>() / body.len() as f32;
+
+        assert!(center.distance(player.screen) < 0.001);
     }
 
     #[test]
@@ -1012,7 +1162,7 @@ mod tests {
         let player = structure_player(ground, 0.0);
 
         assert_eq!(
-            structure_target_alpha(&structure, Some(focus(0.0, false)), &grid, Some(player)),
+            structure_target_alpha(&structure, Some(focus(0.0, false)), Some(player)),
             0.0
         );
     }
@@ -1025,7 +1175,7 @@ mod tests {
         let player = structure_player(ground, 1.0);
 
         assert_eq!(
-            structure_target_alpha(&structure, Some(focus(1.0, false)), &grid, Some(player)),
+            structure_target_alpha(&structure, Some(focus(1.0, false)), Some(player)),
             XRAY_ALPHA
         );
     }
@@ -1042,15 +1192,15 @@ mod tests {
         let above = structure(player_building(ground), 2.0, 2.5, OcclusionRole::Facade);
 
         assert_eq!(
-            structure_target_alpha(&current, Some(editor), &grid, Some(player)),
+            structure_target_alpha(&current, Some(editor), Some(player)),
             1.0
         );
         assert_eq!(
-            structure_target_alpha(&below, Some(editor), &grid, Some(player)),
+            structure_target_alpha(&below, Some(editor), Some(player)),
             DIM_ALPHA
         );
         assert_eq!(
-            structure_target_alpha(&above, Some(editor), &grid, Some(player)),
+            structure_target_alpha(&above, Some(editor), Some(player)),
             EDITOR_UPPER_ALPHA
         );
     }
@@ -1081,9 +1231,7 @@ mod tests {
         assert_eq!(structure.z_min, 1.0);
         assert_eq!(structure.z_max, 3.0);
         assert_eq!(structure.role, OcclusionRole::Roof);
-        let OcclusionFootprint::Polygon(points) = structure.footprint else {
-            panic!("scene footprints should be polygons");
-        };
+        let points = structure.footprint.points;
         assert!(points.contains(&Vec2::new(2.0, 12.0)));
         assert!(points.contains(&Vec2::new(18.0, 28.0)));
     }
@@ -1152,6 +1300,28 @@ mod tests {
         let surface = surface(2.0);
         let footprint = SurfaceFootprint::Cells([IVec2::ZERO].into_iter().collect::<HashSet<_>>());
         let player_screen = Vec2::Y * elevation_screen_offset(2.0);
+
+        assert_eq!(
+            surface_target_alpha(
+                &surface,
+                Some(&footprint),
+                Some(focus),
+                &grid,
+                Some(player_screen)
+            ),
+            XRAY_ALPHA
+        );
+    }
+
+    #[test]
+    fn elevated_floor_occludes_the_player_one_iso_step_away() {
+        let grid = IsoGrid::default();
+        let focus = focus(0.0, false);
+        let surface = surface(1.0);
+        let footprint = SurfaceFootprint::Cells([IVec2::ZERO].into_iter().collect::<HashSet<_>>());
+        // A floor at elevation 1 is drawn one screen-rise above its cells. The
+        // player standing one cell down-screen ends up underneath it.
+        let player_screen = grid.cell_to_world(Vec2::new(1.0, -1.0));
 
         assert_eq!(
             surface_target_alpha(

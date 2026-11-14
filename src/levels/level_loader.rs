@@ -493,10 +493,34 @@ mod tests {
             .get("prologue_restaurant_0")
             .expect("prologue_restaurant_0 should be registered");
 
-        assert!(prefab.level.scenes.is_empty());
+        assert!(!prefab.level.scenes.is_empty());
         assert!(!prefab.level.colliders.is_empty());
-        assert_eq!(prefab.level.floors.len(), 2);
-        assert_eq!(prefab.level.accesses.len(), 1);
+        assert_eq!(prefab.level.floors.len(), 4);
+        assert_eq!(prefab.level.accesses.len(), 3);
+        assert_eq!(prefab.level.npcs.len(), 4);
+
+        let roles =
+            prefab
+                .level
+                .colliders
+                .iter()
+                .map(|collider| collider.role)
+                .chain(
+                    prefab.level.scenes.iter().filter_map(|scene| {
+                        scene.occlusion.as_ref().map(|occlusion| occlusion.role)
+                    }),
+                )
+                .collect::<Vec<_>>();
+        for role in [
+            OcclusionRole::Facade,
+            OcclusionRole::Roof,
+            OcclusionRole::Ceiling,
+            OcclusionRole::Interior,
+            OcclusionRole::Prop,
+        ] {
+            assert!(roles.contains(&role), "level should use {role:?}");
+        }
+
         assert!(prefab
             .level
             .scenes
@@ -571,7 +595,7 @@ mod load_tests {
     }
 
     #[test]
-    fn alley_stair_reaches_the_roof() {
+    fn alley_ramp_reaches_every_floor() {
         let mut app = setup();
         app.update();
         let level = app
@@ -590,16 +614,23 @@ mod load_tests {
             .expect("alley entrance should be walkable");
         assert_eq!(entrance.elevation, 0.0);
 
-        let stair_mid = vertical
-            .sample(&grid, Vec2::new(272.0, 136.0), 0.4)
-            .expect("stairs should be walkable");
-        assert!((stair_mid.elevation - 0.5).abs() < 0.01);
+        // The first ramp climbs from the alley to the second floor.
+        let ramp_mid = vertical
+            .sample(&grid, Vec2::new(416.0, 176.0), 0.9)
+            .expect("ramp should be walkable");
+        assert!((ramp_mid.elevation - 1.0).abs() < 0.01);
 
-        let roof = vertical
-            .sample(&grid, grid.cell_to_world(Vec2::new(12.0, 0.0)), 1.0)
-            .expect("roof should be walkable");
-        assert_eq!(roof.elevation, 1.0);
-        assert_eq!(roof.rank, 1);
+        for (cell, elevation) in [
+            (Vec2::new(13.0, 1.0), 2.0),
+            (Vec2::new(13.0, 0.0), 4.0),
+            (Vec2::new(13.0, -1.0), 6.0),
+        ] {
+            let sample = vertical
+                .sample(&grid, grid.cell_to_world(cell), elevation - 0.1)
+                .expect("declared floor should be walkable");
+            assert_eq!(sample.elevation, elevation);
+            assert_eq!(sample.rank, elevation as i16);
+        }
     }
 
     #[test]
@@ -648,6 +679,7 @@ mod load_tests {
             .level
             .clone();
         level.label = "npc_test".into();
+        level.npcs.clear();
         level.npcs.push(NpcDeclared {
             position: Vec2::new(12.0, -8.0),
             elevation: 0.0,
