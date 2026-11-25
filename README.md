@@ -8,6 +8,7 @@ Tyconia is an opinionated game engine built on top of [bevy] for 2D isometric au
 # Running
 * Make sure you have rust
 * Start the native app: `cargo run`
+* With Nix, use `nix develop` for the default (stable/LLVM) toolchain, or `nix develop .#cranelift` for faster debug builds via a pinned nightly + Cranelift. Release and web builds should use the default shell.
 * Start the web build: `trunk serve`
     * requires [trunk]: `cargo install --locked trunk`
     * requires `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`

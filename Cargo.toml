@@ -12,18 +12,21 @@ organization = "allurestudios"
 application = "tyconic"
 support_link = "https://ko-fi.com/yorqat"
 
+# Dependencies at opt-level 3 made dev builds extremely slow; 1 is a good compromise.
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 1
 
 [profile.dev]
 opt-level = 1
+debug = "line-tables-only"
 
 # This is used by trunk as it doesn't support custom profiles: https://github.com/trunk-rs/trunk/issues/605
 # xbuild also uses this profile for building android AABs because I couldn't find a configuration for it
+# `dist` keeps full LTO for final distribution builds.
 [profile.release]
 opt-level = "s"
-lto = true
-codegen-units = 1
+lto = "thin"
+codegen-units = 8
 strip = true
 
 # Profile for distribution
@@ -59,11 +62,8 @@ bevy = { version = "0.15.3", default-features = false, features = [
     "bevy_ui_picking_backend",
     "bevy_window",
     "bevy_winit",
-    "custom_cursor",
-    "default_font",
     "multi_threaded",
     "png",
-    "sysinfo_plugin",
     "serialize",
     "webgl2",
     "x11",

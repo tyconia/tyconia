@@ -501,7 +501,6 @@ dependencies = [
  "bevy_time",
  "bevy_utils",
  "const-fnv1a-hash",
- "sysinfo",
 ]
 
 [[package]]
@@ -1189,11 +1188,9 @@ dependencies = [
  "approx",
  "bevy_a11y",
  "bevy_app",
- "bevy_asset",
  "bevy_derive",
  "bevy_ecs",
  "bevy_hierarchy",
- "bevy_image",
  "bevy_input",
  "bevy_log",
  "bevy_math",
@@ -1201,14 +1198,12 @@ dependencies = [
  "bevy_tasks",
  "bevy_utils",
  "bevy_window",
- "bytemuck",
  "cfg-if",
  "crossbeam-channel",
  "raw-window-handle",
  "serde",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types",
  "winit",
 ]
 
@@ -2923,15 +2918,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "610a5acd306ec67f907abe5567859a3c693fb9886eb1f012ab8f2a47bef3db51"
 
 [[package]]
-name = "ntapi"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a3895c6391c39d7fe7ebc444a87eb2991b2a0bc718fdabd071eec617fc68e4"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3995,19 +3981,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sysinfo"
-version = "0.32.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c33cd241af0f2e9e3b5c32163b873b29956890b5342e6745b917ce9d490f4af"
-dependencies = [
- "core-foundation-sys",
- "libc",
- "memchr",
- "ntapi",
- "windows 0.57.0",
-]
-
-[[package]]
 name = "taffy"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4649,16 +4622,6 @@ dependencies = [
 
 [[package]]
 name = "windows"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
-dependencies = [
- "windows-core 0.57.0",
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd04d41d93c4992d421894c18c8b43496aa748dd4c081bac0dc93eb0489272b6"
@@ -4683,18 +4646,6 @@ version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12661b9c89351d684a50a8a643ce5f608e20243b9fb84687800163429f161d65"
 dependencies = [
- "windows-result 0.1.2",
- "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
-dependencies = [
- "windows-implement 0.57.0",
- "windows-interface 0.57.0",
  "windows-result 0.1.2",
  "windows-targets 0.52.6",
 ]
@@ -4727,17 +4678,6 @@ dependencies = [
 
 [[package]]
 name = "windows-implement"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "windows-implement"
 version = "0.58.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bbd5b46c938e506ecbce286b6628a02171d56153ba733b6c741fc627ec9579b"
@@ -4752,17 +4692,6 @@ name = "windows-implement"
 version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83577b051e2f49a058c308f17f273b570a6a758386fc291b5f6a934dd84e48c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "windows-interface"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",
